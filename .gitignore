@@ -6,3 +6,4 @@ test-results/
 playwright-report/
 artifacts/preview/
 .DS_Store
+.claude

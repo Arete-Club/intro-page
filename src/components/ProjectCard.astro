@@ -1,13 +1,13 @@
 ---
 import { type Project, verifiedLink } from '../data/content';
-interface Props { project: Project; index: number }
-const { project, index } = Astro.props;
+interface Props { project: Project }
+const { project } = Astro.props;
 const href = verifiedLink(project.href);
 ---
 
 <article class="project-card" data-project={project.name}>
-  <div class="project-meta mono"><span>PROJECT / {String(index + 1).padStart(2, '0')}</span><span>{project.category}</span></div>
   <div class="project-body">
+    <p class="project-category">{project.category}</p>
     <h3>{project.name}</h3>
     <p>{project.summary}</p>
   </div>

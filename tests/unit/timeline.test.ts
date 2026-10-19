@@ -99,15 +99,20 @@ describe('T03: scroll-driven ocean timeline', () => {
     expect(at(0).fogGradient).toBe(0);
     expect(at(0.5).fogGradient).toBeGreaterThan(0.9);
     for (const frame of samples) expect(Math.max(...frame.fogColor)).toBeGreaterThan(20);
-    expect(at(1).particles).toBeGreaterThan(0.4);
+    expect(at(1).particles).toBeGreaterThan(0);
+    expect(at(1).particles).toBeLessThan(0.2);
   });
 
   it('shows rays and particles only underwater, fading rays in the abyss', () => {
     expect(at(0).rays).toBe(0);
     expect(at(0).particles).toBe(0);
     expect(at(0.5).rays).toBeGreaterThan(0.5);
-    expect(at(0.5).particles).toBeGreaterThan(0.8);
+    expect(at(0.5).particles).toBeGreaterThan(0.5);
     expect(at(1).rays).toBe(0);
+    expect(at(1).particles).toBeLessThan(at(0.5).particles * 0.3);
+    for (let i = 401; i < samples.length; i++) {
+      expect(samples[i].particles).toBeLessThanOrEqual(samples[i - 1].particles);
+    }
   });
 
   it('fades overlay copy in and out by scroll range', () => {

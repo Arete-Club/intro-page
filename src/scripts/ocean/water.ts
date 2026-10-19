@@ -3,7 +3,7 @@ import {
 } from 'three';
 import { mixRGB } from './color';
 import { fogChunk, skyChunk, toVec3, waveChunk, type SharedUniforms } from './glsl';
-import type { OceanFrame, Palette } from './timeline';
+import { smoothstep, type OceanFrame, type Palette } from './timeline';
 
 const WATERLINE_DISTANCE = 0.6;
 
@@ -32,21 +32,22 @@ void main() {
   float dist = length(toCamera);
   vec3 view = toCamera / dist;
   vec3 normal = waveNormal(vWorld.xz, 1.0 / (1.0 + dist * 0.02));
-  vec3 color;
-  if (gl_FrontFacing) {
-    float fresnel = 0.02 + 0.98 * pow(1.0 - clamp(dot(normal, view), 0.0, 1.0), 5.0);
-    vec3 reflected = reflect(-view, normal);
-    reflected.y = abs(reflected.y);
-    color = mix(uWaterBody, skyColor(reflected), fresnel);
-    color += uSunColor * pow(max(dot(reflected, uSunDir), 0.0), 420.0) * 0.8;
-  } else {
-    // From below: a bright refracted window overhead, total internal
-    // reflection (the water's own color) towards grazing angles.
-    float overhead = clamp(-view.y, 0.0, 1.0) + normal.x * 0.6 + normal.z * 0.3;
-    float window = smoothstep(0.62, 0.86, overhead);
-    color = mix(fogTint(-view) * 1.12, uSurfaceLight, window * uLight);
-  }
-  gl_FragColor = vec4(applyFog(color, vWorld), 1.0);
+  float fresnel = 0.02 + 0.98 * pow(1.0 - clamp(dot(normal, view), 0.0, 1.0), 5.0);
+  vec3 reflected = reflect(-view, normal);
+  reflected.y = abs(reflected.y);
+  vec3 above = mix(uWaterBody, skyColor(reflected), fresnel);
+  above += uSunColor * pow(max(dot(reflected, uSunDir), 0.0), 420.0) * 0.8;
+  // A diffuse window from below, without an abrupt front/back-face switch
+  // when a wave passes the lens. Both sides meet over a narrow depth band.
+  float overhead = clamp(-view.y, 0.0, 1.0) + normal.x * 0.6 + normal.z * 0.3;
+  float window = smoothstep(0.5, 0.9, overhead);
+  vec3 below = mix(fogTint(-view), uSurfaceLight, window * uLight * 0.65);
+  float aboveWeight = smoothstep(-0.12, 0.12, toCamera.y);
+  vec3 color = mix(below, above, aboveWeight);
+  // At underwater grazing angles the open-water light field must remain
+  // visible. An opaque underside would draw a false horizontal horizon.
+  float opacity = mix(window * uLight * 0.5, 1.0, aboveWeight);
+  gl_FragColor = vec4(applyFog(color, vWorld), opacity);
 }
 `;
 
@@ -61,19 +62,18 @@ void main() {
 
 // A lens-sized quad just in front of the camera: where it sits below the
 // wave height it is tinted with water, so the frame splits at a moving
-// waterline while the camera passes through the surface.
+// waterline while the camera passes through the surface. It only tints the
+// submerged part: no bright rim, foam stripe or separately lit boundary.
 const waterlineFragment = /* glsl */ `
 ${waveChunk}
 uniform vec3 uUnderColor;
-uniform vec3 uLineColor;
 uniform float uFade;
 varying vec3 vWorld;
 void main() {
   float d = vWorld.y - waveHeight(vWorld.xz);
-  float below = 1.0 - smoothstep(-0.006, 0.006, d);
-  float line = 1.0 - smoothstep(0.0, 0.018, abs(d));
-  vec3 color = mix(uUnderColor, uLineColor, line * 0.7);
-  gl_FragColor = vec4(color, max(below * 0.78, line * 0.45) * uFade);
+  float feather = max(fwidth(d) * 2.0, 0.025);
+  float below = 1.0 - smoothstep(-feather, feather, d);
+  gl_FragColor = vec4(uUnderColor, below * 0.3 * uFade);
 }
 `;
 
@@ -101,8 +101,11 @@ export function createWater(shared: SharedUniforms, palette: Palette, mobile: bo
     vertexShader: surfaceVertex,
     fragmentShader: surfaceFragment,
     side: DoubleSide,
+    transparent: true,
+    depthWrite: false,
   });
   const surface = new Mesh(geometry, surfaceMaterial);
+  surface.renderOrder = 1;
   surface.frustumCulled = false;
 
   const waterlineGeometry = new PlaneGeometry(2, 2);
@@ -110,7 +113,6 @@ export function createWater(shared: SharedUniforms, palette: Palette, mobile: bo
     uniforms: {
       uTime: shared.uTime,
       uUnderColor: { value: new Vector3() },
-      uLineColor: { value: toVec3(palette.offWhite) },
       uFade: { value: 0 },
     },
     vertexShader: waterlineVertex,
@@ -134,7 +136,7 @@ export function createWater(shared: SharedUniforms, palette: Palette, mobile: bo
     update(frame: OceanFrame) {
       const [x, y, z] = frame.position;
       surface.position.set(x, 0, z - 6);
-      const fade = 1 - Math.min(1, Math.max(0, (Math.abs(y) - 0.25) / 0.3));
+      const fade = 1 - smoothstep(0.15, 0.65, Math.abs(y));
       waterline.visible = fade > 0;
       waterlineMaterial.uniforms.uFade.value = fade;
       toVec3(frame.water, waterlineMaterial.uniforms.uUnderColor.value);

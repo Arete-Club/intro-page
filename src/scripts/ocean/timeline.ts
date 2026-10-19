@@ -138,12 +138,12 @@ export function oceanFrame(rawProgress: number, palette: Palette): OceanFrame {
     fogColor,
     // Navy while it reads on the scene; then off-white over the top shade.
     ink: contrast(palette.bg, fogColor) >= 4.5 ? 'dark' : 'light',
-    // Clear enough mid-descent to reveal terrain, thick in the abyss.
+    // Light reaches into open water near the surface, fading with depth.
     fogDensity: lerp(0.0032, lerp(0.014, 0.045, depth ** 3), under),
     fogGradient: under * (1 - smoothstep(0.7, 1, depth)),
     sunlight: lerp(1, Math.exp(-depth * 3.2), under),
     rays: under * (1 - smoothstep(0.35, 0.82, depth)),
-    particles: under * lerp(1, 0.6, depth),
+    particles: under * lerp(0.75, 0.16, smoothstep(0.1, 1, depth)),
     copy: {
       hero: 1 - smoothstep(0.015, 0.11, progress),
       cue: 1 - smoothstep(0, 0.045, progress),
