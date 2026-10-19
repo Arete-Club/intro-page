@@ -34,7 +34,7 @@ npm run test:visual
 - `src/components/OceanExperience.astro`: 바다 시퀀스의 장면 문구와 헤더.
 - `src/styles/global.css`: 색상 토큰(motion.md §6), 여백, 서체, 반응형 배치. 3D 장면도 이 파일의 색상 토큰을 읽습니다.
 - `src/scripts/ocean/timeline.ts`: 스크롤 진행도에 따른 카메라 경로, 안개, 빛, 문구 표시 구간. 순수 함수이며 단위 테스트 대상입니다.
-- `src/scripts/ocean/scene.ts`, `water.ts`, `environment.ts`, `glsl.ts`: 렌더러, 수면 셰이더, 하늘, 해저 지형, 광선, 입자, 리소스 정리.
+- `src/scripts/ocean/scene.ts`, `water.ts`, `environment.ts`, `glsl.ts`: 렌더러, 부드러운 수면 통과, 하늘·수중 확산광, 깊이별 안개, 부유 입자, 리소스 정리. 수중에는 해저 지형이나 흰 수면 테두리를 그리지 않습니다.
 - `src/scripts/ocean/mount.ts`: ScrollTrigger 연결, 화면 크기 변경, 모션 감소, 실패 시 대체 표시.
 
 ## 문서

@@ -25,14 +25,14 @@ p, h1, h2, h3 { margin: 0; }
 p { line-height: 1.8; word-break: keep-all; overflow-wrap: break-word; }
 ::selection { color: var(--bg); background: var(--cyan); }
 .wrap { width: calc(100% - var(--gutter) * 2); max-width: 1440px; margin-inline: auto; }
-.mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 11px; font-weight: 400; letter-spacing: .08em; }
 .skip-link { position: fixed; top: 12px; left: 16px; z-index: 40; background: var(--off-white); color: var(--bg); padding: 12px 18px; transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
-.accent { color: var(--cyan); }
 .grain {
-  position: fixed; inset: 0; z-index: 30; pointer-events: none; opacity: .05;
+  position: fixed; inset: 0; z-index: 30; pointer-events: none; opacity: .05; transition: opacity .8s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+/* Deep water reads cleaner with less film grain (motion.md L03). */
+body:has(.ocean:is([data-phase='descent'], [data-phase='abyss'])) .grain { opacity: .025; }
 
 /* Ocean sequence — static layout (no JS, reduced motion, WebGL fallback):
    the three scenes stack as panels from bright surface to the abyss. */
@@ -42,23 +42,21 @@ p { line-height: 1.8; word-break: keep-all; overflow-wrap: break-word; }
 .site-header { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding-block: 30px; border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
 .wordmark { font-size: 27px; font-weight: 500; letter-spacing: -.06em; line-height: 1.1; white-space: nowrap; }
 nav { display: flex; gap: 35px; font-size: 13px; }
-nav span { margin-left: 7px; }
-.scene-copy { position: relative; z-index: 2; display: flex; }
+.scene-copy { position: relative; z-index: 2; display: flex; text-align: left; }
 .hero-copy { min-height: 86svh; padding-block: 14svh 18svh; color: var(--bg); background: linear-gradient(to bottom, var(--cyan) 0%, var(--cyan) 50%, var(--sky-horizon) 100%); }
 .statement { min-height: 64svh; align-items: center; color: var(--off-white); }
 .descent-copy { background: linear-gradient(to bottom, var(--ocean), var(--deep)); }
-.abyss-copy { background: linear-gradient(to bottom, var(--deep), var(--bg)); text-align: center; }
-.hero-brand { display: block; margin-bottom: 30px; font-size: 12px; letter-spacing: .34em; text-transform: uppercase; }
-.hero-title { display: block; font-size: clamp(48px, 8.4vw, 140px); font-weight: 300; line-height: 1; letter-spacing: -.055em; }
-.hero-sub { margin-top: 32px; font-size: clamp(14px, 1.1vw, 16px); letter-spacing: .16em; text-transform: uppercase; line-height: 1.6; }
-.statement-lead { font-size: clamp(34px, 5.2vw, 84px); font-weight: 300; line-height: 1.08; letter-spacing: -.045em; }
-.statement-sub { margin-top: 26px; font-size: clamp(16px, 1.4vw, 20px); color: var(--cyan); letter-spacing: .01em; }
-.statement-echo { margin-top: 10px; color: var(--cyan); }
+.abyss-copy { background: linear-gradient(to bottom, var(--deep), var(--bg)); }
+.scene-eyebrow { margin-bottom: 24px; font-size: 15px; line-height: 1.6; }
+.hero-title, .statement-lead { font-size: clamp(44px, 6.6vw, 104px); font-weight: 300; line-height: 1.05; letter-spacing: -.045em; text-wrap: balance; }
+.story-description { max-width: 36rem; margin-top: 28px; font-size: clamp(18px, 1.4vw, 20px); line-height: 1.75; letter-spacing: -.015em; }
+.story-description span { display: block; }
+.statement-sub { color: var(--body-copy); }
 
 /* Ocean sequence — cinematic layout: the stage is pinned while scroll
    drives the camera. Chosen before paint via the inline `.js` flag. */
 @media (prefers-reduced-motion: no-preference) {
-  .js .ocean:not([data-scene='fallback']) { height: 520svh; }
+  .js .ocean:not([data-scene='fallback']) { height: 440svh; }
   .js .ocean:not([data-scene='fallback']) .ocean-stage {
     position: sticky; top: 0; height: 100svh; min-height: 560px; overflow: hidden;
     background: var(--ocean-bg, var(--sky-horizon));
@@ -70,60 +68,65 @@ nav span { margin-left: 7px; }
   .js .ocean:not([data-scene='fallback']) .ocean-canvas canvas { display: block; width: 100%; height: 100%; }
   .js .ocean[data-scene='ready'] .ocean-canvas { opacity: 1; }
   .js .ocean[data-scene='ready'] .ocean-fallback { opacity: 0; }
-  /* Underwater only: deepen the top edge for the header and vignette the frame. */
+  /* Underwater only: deepen the strip behind the header (no lower, so the light
+     from the surface stays visible) and vignette the frame. */
   .js .ocean:not([data-scene='fallback']) .ocean-shade {
     opacity: 0; transition: opacity .6s;
-    background: linear-gradient(to bottom, rgb(6 21 33 / .5), rgb(6 21 33 / .4) 12%, transparent 28%), radial-gradient(ellipse 130% 120% at 50% 40%, transparent 55%, rgb(3 10 16 / .4) 100%);
+    background: linear-gradient(to bottom, rgb(6 21 33 / .5), rgb(6 21 33 / .4) 11%, transparent 17%), radial-gradient(ellipse 130% 120% at 50% 40%, transparent 55%, rgb(3 10 16 / .4) 100%);
   }
   .js .ocean[data-ink='light'] .ocean-shade { opacity: 1; }
   .js .ocean:not([data-scene='fallback']) .scene-copy { position: absolute; inset: 0; min-height: 0; padding: 0; background: none; pointer-events: none; will-change: opacity, transform; }
-  .js .ocean:not([data-scene='fallback']) .hero-copy { align-items: flex-start; padding-top: clamp(140px, 23svh, 250px); }
-  .js .ocean:not([data-scene='fallback']) .descent-copy { align-items: flex-end; padding-bottom: 19svh; }
+  .js .ocean:not([data-scene='fallback']) .hero-copy { align-items: flex-start; padding-top: clamp(128px, 20svh, 210px); }
+  /* Copy sinks with the camera: top (surface) → upper middle, under the
+     light from the surface (descent) → lower middle (abyss). */
+  .js .ocean:not([data-scene='fallback']) .descent-copy { align-items: flex-start; padding-top: 34svh; }
+  .js .ocean:not([data-scene='fallback']) .abyss-copy { align-items: flex-end; padding-bottom: 13svh; }
+  /* Scene copy dims towards Muted Cyan as the light fades (--copy-tint from the timeline). */
+  .js .ocean[data-scene='ready'] .statement { color: color-mix(in srgb, var(--off-white), var(--cyan) calc(var(--copy-tint, 0) * 100%)); }
+  .js .ocean[data-scene='ready'] .statement-sub { color: inherit; }
   .js .ocean:not([data-scene='fallback']) .scene-copy.statement { opacity: 0; }
   .js .ocean:not([data-scene='fallback']) .scroll-cue {
     /* Centered without transform: the scroll script owns `transform` here. */
     position: absolute; z-index: 2; left: 0; right: 0; bottom: 30px; width: max-content; margin-inline: auto;
-    display: flex; flex-direction: column; align-items: center; gap: 14px; font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--off-white);
+    display: flex; flex-direction: column; align-items: center; gap: 14px; font-size: 13px; color: var(--off-white);
   }
   .scroll-line { width: 1px; height: 38px; background: currentColor; transform-origin: top; animation: cue 2.4s ease-in-out infinite; }
 }
 @keyframes cue { 0% { transform: scaleY(0); opacity: 0; } 35% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1) translateY(100%); opacity: 0; } }
 
 /* Research laboratory — typography and space, no cards. */
-.deep-content { position: relative; background: var(--bg); }
+/* The last light: the page rises from the abyss navy to Deep Ocean and settles back, without a seam. */
+.deep-content { position: relative; background: var(--bg) linear-gradient(to bottom, var(--bg), var(--deep) 45svh, var(--bg) 120svh); }
 .section { padding-block: 100px 120px; scroll-margin-top: 30px; }
-.section-label { display: flex; align-items: center; justify-content: space-between; color: var(--muted); padding-bottom: 22px; border-bottom: 1px solid var(--rule); margin-bottom: 63px; }
-.section-label .tiny-cross { color: var(--cyan); }
-.tiny-cross { font-family: monospace; font-size: 20px; font-weight: 300; line-height: 1; }
+.section-label { color: var(--muted); font-size: 13px; padding-bottom: 22px; border-bottom: 1px solid var(--rule); margin-bottom: 63px; }
 .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9%; }
 .small-label { font-size: 13px; color: var(--muted); margin-bottom: 23px; }
 h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; letter-spacing: -.045em; }
 .about-copy { padding-top: 5px; max-width: 550px; }
 .about-copy p { font-size: 17px; color: var(--body-copy); line-height: 1.95; }
 .about-copy p + p { margin-top: 24px; }
-.values { margin-top: 45px; padding-top: 25px; border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; gap: 13px 26px; color: var(--cyan); font-size: 9px; }
+.values { margin-top: 45px; padding-top: 25px; border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; gap: 13px 26px; color: var(--cyan); font-size: 13px; }
 .research-heading { display: flex; justify-content: space-between; gap: 50px; align-items: flex-end; }
 .research-heading p, .projects-heading p { font-size: 16px; color: var(--muted); }
 .research-heading p { max-width: 390px; }
 .research-caption { margin-top: 62px; margin-bottom: 19px; font-size: 12px; }
-.research-row { display: grid; grid-template-columns: 65px 1.4fr 1fr 20px; gap: 18px; align-items: center; padding-block: 31px; border-top: 1px solid var(--rule); }
+.research-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; align-items: center; padding-block: 31px; border-top: 1px solid var(--rule); }
 .research-row:last-child { border-bottom: 1px solid var(--rule); }
-.research-index { color: var(--cyan); }
 .research-row h3 { font-size: clamp(19px, 1.95vw, 29px); font-weight: 400; letter-spacing: -.025em; }
 .research-row p { color: var(--muted); font-size: 16px; }
-.research-mark { color: var(--cyan); text-align: right; font-size: 18px; }
 .projects-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 54px; }
 .project-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-block: 1px solid var(--rule); }
-.project-card { display: flex; flex-direction: column; padding: 31px 40px 40px 0; }
+.project-card { display: flex; flex-direction: column; padding: 40px 40px 40px 0; }
 .project-card + .project-card { border-left: 1px solid var(--rule); padding-left: 40px; }
 .project-card:last-child { padding-right: 0; }
-.project-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 9px; letter-spacing: .06em; }
-.project-meta span:first-child { color: var(--cyan); }
-.project-body { padding-top: 55px; flex: 1; }
+.project-body { flex: 1; }
+.project-body .project-category { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 12px; }
 .project-body h3 { font-size: clamp(32px, 3vw, 44px); font-weight: 400; letter-spacing: -.045em; margin-bottom: 22px; }
 .project-body p { font-size: 16px; color: var(--body-copy); max-width: 380px; }
 .project-links { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 30px; font-size: 13px; }
 .project-status { color: var(--muted); }
+/* Monospace only for real data, such as a repository path. */
+.record { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
 .exploration-body { display: flex; justify-content: space-between; align-items: flex-end; gap: 50px; }
 .exploration-body p { max-width: 420px; font-size: 16px; color: var(--muted); margin-bottom: 30px; }
 .work-link { display: inline-flex; gap: 35px; align-items: center; border-bottom: 1px solid currentColor; padding-bottom: 9px; font-size: 13px; white-space: nowrap; }
@@ -134,9 +137,8 @@ h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; l
 .footer-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; }
 .footer-top .wordmark { font-size: 40px; }
 .footer-top p { font-size: clamp(19px, 2.1vw, 30px); line-height: 1.45; font-weight: 400; letter-spacing: -.025em; }
-.footer-bottom { margin-top: 80px; display: flex; align-items: center; justify-content: space-between; gap: 24px; color: var(--muted); }
-.footer-bottom .mono { font-size: 9px; }
-.back-top span { margin-left: 25px; font-size: 16px; }
+.footer-bottom { margin-top: 80px; display: flex; align-items: center; justify-content: space-between; gap: 24px; color: var(--muted); font-size: 13px; }
+.back-top span { margin-left: 8px; font-size: 16px; }
 .official-links { display: flex; gap: 24px; font-size: 13px; }
 
 @media (max-width: 900px) {
@@ -144,38 +146,32 @@ h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; l
   .research-heading, .exploration-body { display: block; }
   .research-heading p { margin-top: 24px; }
   .exploration-body p { margin-top: 24px; }
-  .research-row { grid-template-columns: 32px 1.4fr 1fr 16px; gap: 14px; }
+  .research-row { gap: 14px; }
   .project-grid { grid-template-columns: 1fr; }
   .project-card, .project-card + .project-card, .project-card:last-child { padding: 28px 0 36px; border-left: 0; }
   .project-card + .project-card { border-top: 1px solid var(--rule); }
-  .project-body { padding-top: 36px; }
   .project-body p { max-width: 520px; }
 }
 @media (max-width: 600px) {
   .site-header { padding-block: 23px; }
   .wordmark { font-size: 22px; }
   nav { gap: 18px; font-size: 11px; }
-  nav span { display: none; }
-  .js .ocean:not([data-scene='fallback']) { height: 440svh; }
-  .js .ocean:not([data-scene='fallback']) .hero-copy { padding-top: 118px; }
-  .hero-brand { margin-bottom: 22px; font-size: 11px; }
-  .hero-title { font-size: clamp(44px, 13vw, 64px); line-height: 1.02; }
-  .hero-sub { margin-top: 24px; font-size: 13px; letter-spacing: .12em; max-width: 280px; }
-  .statement-lead { font-size: clamp(32px, 9.4vw, 44px); }
-  .statement-sub { font-size: 16px; }
+  .js .ocean:not([data-scene='fallback']) .hero-copy { padding-top: 112px; }
+  .scene-eyebrow { margin-bottom: 20px; font-size: 13px; }
+  .hero-title, .statement-lead { font-size: clamp(40px, 12vw, 64px); line-height: 1.05; }
+  .story-description { margin-top: 22px; font-size: clamp(16px, 4.3vw, 18px); line-height: 1.7; }
   .desktop-break { display: none; }
   .section { padding-block: 65px 75px; }
-  .section-label { margin-bottom: 37px; font-size: 9px; }
+  .section-label { margin-bottom: 37px; }
   .section-grid { grid-template-columns: 1fr; gap: 34px; }
   h2 { font-size: 40px; }
   .small-label { font-size: 12px; }
   .about-copy p { font-size: 16px; }
-  .values { gap: 14px; margin-top: 32px; font-size: 8px; }
+  .values { gap: 14px; margin-top: 32px; }
   .research-caption { margin-top: 40px; }
-  .research-row { grid-template-columns: 24px 1fr 12px; gap: 8px 13px; padding-block: 25px; }
+  .research-row { grid-template-columns: 1fr; gap: 8px; padding-block: 25px; }
   .research-row h3 { font-size: 20px; }
-  .research-row p { grid-column: 2; font-size: 16px; }
-  .research-mark { grid-column: 3; grid-row: 1; }
+  .research-row p { font-size: 16px; }
   .projects-heading { display: block; margin-bottom: 35px; }
   .projects-heading p { margin-top: 20px; }
   .project-body h3 { font-size: 36px; margin-bottom: 16px; }
@@ -183,8 +179,10 @@ h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; l
   .footer-top { flex-direction: column; gap: 25px; }
   .footer-top .wordmark { font-size: 30px; }
   .footer-bottom { margin-top: 50px; flex-wrap: wrap; }
-  .back-top { font-size: 8px !important; }
-  .back-top span { margin-left: 10px; }
+}
+/* Shorter sequence on phones — only while the scroll-driven layout is active. */
+@media (max-width: 600px) and (prefers-reduced-motion: no-preference) {
+  .js .ocean:not([data-scene='fallback']) { height: 420svh; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

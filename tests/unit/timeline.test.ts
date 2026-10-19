@@ -8,6 +8,29 @@ const token = (name: string) => parseHex(css.match(new RegExp(`--${name}: (#[a-f
 const palette: Palette = { bg: token('bg'), deep: token('deep'), ocean: token('ocean'), cyan: token('cyan'), offWhite: token('off-white') };
 const samples = Array.from({ length: 1001 }, (_, i) => oceanFrame(i / 1000, palette));
 const at = (p: number) => oceanFrame(p, palette);
+// Sequence heights as shipped: desktop, then the phone override. The pinned stage is one screen.
+const sequences = [...css.matchAll(/\.ocean:not\(\[data-scene='fallback'\]\) \{ height: (\d+)svh; \}/g)].map((m) => Number(m[1]));
+
+/** L01/L02 rhythm in screens of scroll for one sequence height. */
+function rhythm(svh: number) {
+  const screens = svh / 100 - 1;
+  const readable = (frame: (typeof samples)[number]) => Math.max(frame.copy.hero, frame.copy.descent, frame.copy.abyss) > 0.5;
+  let silent = 0;
+  let gap = 0;
+  let longest = 0;
+  for (const frame of samples) {
+    if (readable(frame)) { gap = 0; continue; }
+    silent++;
+    longest = Math.max(longest, ++gap);
+  }
+  const first = (test: (frame: (typeof samples)[number]) => boolean) => samples.find(test)!.progress;
+  return {
+    silentShare: silent / samples.length,
+    longestGap: (longest / 1000) * screens,
+    crossing: (first((f) => f.position[1] <= -0.4) - first((f) => f.position[1] <= 0.4)) * screens,
+    split: (samples.filter((f) => f.waterline > 0.99).length / 1000) * screens,
+  };
+}
 
 describe('T03: scroll-driven ocean timeline', () => {
   it('uses the motion.md palette tokens', () => {
@@ -26,8 +49,8 @@ describe('T03: scroll-driven ocean timeline', () => {
 
   it('starts above the surface, crosses it during Scene 02 and never resurfaces', () => {
     expect(at(0).position[1]).toBeGreaterThan(2);
-    expect(at(0.2).position[1]).toBeGreaterThan(0);
-    expect(at(0.4).position[1]).toBeLessThan(-1);
+    expect(at(0.2).under).toBeLessThan(0.05);
+    expect(at(0.4).under).toBeGreaterThan(0.95);
     expect(at(1).position[1]).toBeCloseTo(ABYSS_Y);
     let previous = Infinity;
     for (const frame of samples) {
@@ -99,26 +122,47 @@ describe('T03: scroll-driven ocean timeline', () => {
     expect(at(0).fogGradient).toBe(0);
     expect(at(0.5).fogGradient).toBeGreaterThan(0.9);
     for (const frame of samples) expect(Math.max(...frame.fogColor)).toBeGreaterThan(20);
-    expect(at(1).particles).toBeGreaterThan(0.4);
+    expect(at(1).particles).toBeGreaterThan(0);
+    expect(at(1).particles).toBeLessThan(0.2);
   });
 
   it('shows rays and particles only underwater, fading rays in the abyss', () => {
     expect(at(0).rays).toBe(0);
     expect(at(0).particles).toBe(0);
     expect(at(0.5).rays).toBeGreaterThan(0.5);
-    expect(at(0.5).particles).toBeGreaterThan(0.8);
+    expect(at(0.5).particles).toBeGreaterThan(0.5);
     expect(at(1).rays).toBe(0);
+    expect(at(1).particles).toBeLessThan(at(0.5).particles * 0.3);
+    for (let i = 401; i < samples.length; i++) {
+      expect(samples[i].particles).toBeLessThanOrEqual(samples[i - 1].particles);
+    }
   });
 
   it('fades overlay copy in and out by scroll range', () => {
     expect(at(0).copy.hero).toBe(1);
-    expect(at(0.15).copy.hero).toBe(0);
+    expect(at(0.12).copy.hero).toBe(1);
+    expect(at(0.2).copy.hero).toBe(0);
     expect(at(0.3).copy.descent).toBe(0);
+    expect(at(0.5).copy.descent).toBe(1);
     expect(at(0.58).copy.descent).toBe(1);
-    expect(at(0.8).copy.descent).toBe(0);
-    expect(at(0.7).copy.abyss).toBe(0);
-    expect(at(0.9).copy.abyss).toBe(1);
+    expect(at(0.7).copy.descent).toBe(0);
+    expect(at(0.72).copy.abyss).toBe(0);
+    expect(at(0.8).copy.abyss).toBe(1);
     expect(at(1).copy.abyss).toBe(1);
+  });
+
+  it.each([['desktop', 0], ['mobile', 1]] as const)('L01/L02: %s rhythm keeps copy on screen and gives the crossing room', (_, index) => {
+    expect(sequences).toHaveLength(2);
+    const { silentShare, longestGap, crossing, split } = rhythm(sequences[index]);
+    expect(silentShare).toBeLessThanOrEqual(0.4);
+    expect(longestGap).toBeLessThanOrEqual(0.9);
+    expect(crossing).toBeGreaterThanOrEqual(0.6);
+    expect(split).toBeGreaterThanOrEqual(0.3);
+  });
+
+  it('L01: the descent copy arrives only once the camera is under', () => {
+    const arrival = samples.find((frame) => frame.copy.descent > 0.5)!;
+    expect(arrival.under).toBeGreaterThan(0.99);
   });
 
   it('keeps text readable over the scene where each piece of copy appears', () => {
@@ -127,13 +171,23 @@ describe('T03: scroll-driven ocean timeline', () => {
     expect(contrast(palette.bg, sky.horizon)).toBeGreaterThanOrEqual(4.5);
     for (const frame of samples) {
       if (frame.copy.descent > 0.05 || frame.copy.abyss > 0.05) {
-        expect(contrast(palette.offWhite, frame.fogColor)).toBeGreaterThanOrEqual(4.5);
+        // L04: over the scene, title and description share Off White and dim
+        // towards Muted Cyan with depth, never below 4.5:1.
+        expect(contrast(mixRGB(palette.offWhite, palette.cyan, frame.copyTint), frame.fogColor)).toBeGreaterThanOrEqual(4.5);
       }
       // Light header ink sits on the underwater top shade (≥ 40% Primary
       // Background) over fog that brightens up to 1.28× towards the surface.
       const top = frame.fogColor.map((v) => Math.min(255, v * (1 + frame.fogGradient * 0.28))) as unknown as typeof frame.fogColor;
       if (frame.ink === 'dark') expect(contrast(palette.bg, frame.fogColor)).toBeGreaterThanOrEqual(4.5);
       else expect(contrast(palette.offWhite, mixRGB(top, palette.bg, 0.4))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('L04: scene copy dims with the light as the camera descends', () => {
+    expect(at(0).copyTint).toBe(0);
+    expect(at(1).copyTint).toBeGreaterThan(0.2);
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i].copyTint).toBeGreaterThanOrEqual(samples[i - 1].copyTint);
     }
   });
 
