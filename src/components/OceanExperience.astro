@@ -9,33 +9,34 @@ const { showContact } = Astro.props;
     <div class="ocean-canvas" aria-hidden="true"></div>
     <div class="ocean-shade" aria-hidden="true"></div>
     <header class="site-header wrap">
-      <a class="wordmark" href="#top" aria-label="Arete Club 처음으로">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a>
-      <nav aria-label="주요 메뉴">
+      <a class="wordmark" href="#top" aria-label="Arete Club — Back to top">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a>
+      <nav aria-label="Main navigation">
         <a href="#about">About</a>
         <a href="#research">Research</a>
-        <a href="#projects">Projects <span aria-hidden="true">↗</span></a>
+        <a href="#projects">Projects</a>
         {showContact && <a href="#contact">Contact</a>}
       </nav>
     </header>
 
     <div class="scene-copy hero-copy" data-copy="hero">
       <div class="wrap">
-        <h1 id="hero-title"><span class="hero-brand mono">Arete Club</span> <span class="hero-title">Beyond the Surface.</span></h1>
-        <p class="hero-sub">Independent AI Research &amp; Development</p>
+        <p class="scene-eyebrow" lang="en">Independent AI Research &amp; Development</p>
+        <h1 id="hero-title" class="hero-title" lang="en">Beyond the Surface.</h1>
+        <p class="story-description hero-sub"><span>AI grows through new discoveries and inventions.</span> <span>We begin with the technology around us.</span></p>
       </div>
     </div>
     <div class="scene-copy statement descent-copy" data-copy="descent">
       <div class="wrap">
-        <p class="statement-lead">Explore the Unknown.</p>
-        <p class="statement-sub">We explore the frontiers of intelligence.</p>
+        <p class="statement-lead" lang="en">Beneath the Familiar.</p>
+        <p class="story-description statement-sub"><span>Beneath familiar tools lie layers of ideas and systems.</span> <span>We look deeper to understand the AI we already know.</span></p>
       </div>
     </div>
     <div class="scene-copy statement abyss-copy" data-copy="abyss">
       <div class="wrap">
-        <p class="statement-lead">Curiosity drives discovery.</p>
-        <p class="statement-lead statement-echo">Excellence shapes what comes next.</p>
+        <p class="statement-lead" lang="en">Beyond the Known.</p>
+        <p class="story-description statement-sub"><span>What lies beyond what we know?</span> <span>We explore what has yet to be discovered or created.</span></p>
       </div>
     </div>
-    <div class="scroll-cue mono" data-copy="cue" aria-hidden="true"><span>Scroll to Explore</span><span class="scroll-line"></span></div>
+    <div class="scroll-cue" data-copy="cue" aria-hidden="true"><span>Scroll to explore</span><span class="scroll-line"></span></div>
   </div>
 </section>

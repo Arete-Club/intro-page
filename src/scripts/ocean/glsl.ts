@@ -32,7 +32,7 @@ uniform vec3 uFogColor;
 uniform float uFogDensity;
 uniform float uFogGradient;
 vec3 fogTint(vec3 dir) {
-  return uFogColor * (1.0 + uFogGradient * (smoothstep(-0.7, 0.7, dir.y) * 0.5 - 0.22));
+  return uFogColor * (1.0 + uFogGradient * (smoothstep(-0.65, 0.4, dir.y) * 0.68 - 0.4));
 }
 vec3 applyFog(vec3 color, vec3 worldPosition) {
   vec3 ray = worldPosition - cameraPosition;

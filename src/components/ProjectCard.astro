@@ -1,18 +1,19 @@
 ---
 import { type Project, verifiedLink } from '../data/content';
-interface Props { project: Project; index: number }
-const { project, index } = Astro.props;
+interface Props { project: Project }
+const { project } = Astro.props;
 const href = verifiedLink(project.href);
+const repository = href ? new URL(href).pathname.replace(/^\/|\/$/g, '') : null;
 ---
 
 <article class="project-card" data-project={project.name}>
-  <div class="project-meta mono"><span>PROJECT / {String(index + 1).padStart(2, '0')}</span><span>{project.category}</span></div>
   <div class="project-body">
+    <p class="project-category">{project.category}</p>
     <h3>{project.name}</h3>
     <p>{project.summary}</p>
   </div>
   {(project.status || href) && <div class="project-links">
     {project.status && <span class="project-status">{project.status}</span>}
-    {href && <a href={href} aria-label={`${project.name} GitHub`}>GitHub <span aria-hidden="true">↗</span></a>}
+    {href && <a href={href} aria-label={`GitHub repository ${repository}`}><span class="record">{repository}</span> <span aria-hidden="true">↗</span></a>}
   </div>}
 </article>

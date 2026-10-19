@@ -1,6 +1,5 @@
 import {
-  AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, DoubleSide, Mesh, PlaneGeometry,
-  Points, ShaderMaterial, SphereGeometry, Vector3,
+  BackSide, BufferAttribute, BufferGeometry, Mesh, Points, ShaderMaterial, SphereGeometry, Vector3,
 } from 'three';
 import { mixRGB } from './color';
 import { fogChunk, skyChunk, toVec3, type SharedUniforms } from './glsl';
@@ -28,77 +27,41 @@ const skyFragment = /* glsl */ `
 ${skyChunk}
 ${fogChunk}
 uniform float uUnder;
+uniform float uTime;
+uniform float uRays;
 varying vec3 vDirection;
+
+// Low-frequency light patches projected down from the moving surface.
+// Sampled in world space: the field has depth as the camera descends, with
+// no billboard edges, floor silhouette or narrow shafts facing the lens.
+float lightField(vec3 p) {
+  float depth = max(-p.y, 0.0);
+  vec2 q = (p.xz + uSunDir.xz * depth * 0.3) * 0.065;
+  float patches = 0.5
+    + 0.25 * sin(q.x + sin(q.y * 0.71) + uTime * 0.07)
+    + 0.25 * sin(q.y * 1.13 + sin(q.x * 0.57) - uTime * 0.05);
+  return patches * patches * exp(-depth * 0.025);
+}
+
+vec3 underwaterColor(vec3 dir) {
+  float scattered = 0.0;
+  // Five bounded samples give broad, soft light without a postprocess pass.
+  for (int i = 0; i < 5; i++) {
+    float sampleDistance = 6.0 + float(i * i) * 4.5;
+    vec3 p = cameraPosition + dir * sampleDistance;
+    float submerged = 1.0 - smoothstep(-0.8, 0.2, p.y);
+    scattered += lightField(p) * submerged * exp(-sampleDistance * 0.018) * 0.2;
+  }
+  float overhead = smoothstep(-0.4, 0.7, dir.y);
+  // The light pools overhead; towards the horizon a quarter of it remains.
+  float skyward = mix(0.25, 1.0, smoothstep(0.1, 0.6, dir.y));
+  vec3 lightTint = mix(uFogColor, uSunColor, 0.18);
+  return fogTint(dir) + lightTint * (scattered * 1.35 * skyward + overhead * 0.12) * uRays;
+}
+
 void main() {
   vec3 dir = normalize(vDirection);
-  gl_FragColor = vec4(mix(skyColor(dir), fogTint(dir), uUnder), 1.0);
-}
-`;
-
-const seabedVertex = /* glsl */ `
-varying vec3 vWorld;
-void main() {
-  vec4 world = modelMatrix * vec4(position, 1.0);
-  vWorld = world.xyz;
-  gl_Position = projectionMatrix * viewMatrix * world;
-}
-`;
-
-const seabedFragment = /* glsl */ `
-${fogChunk}
-uniform vec3 uRock;
-uniform vec3 uRim;
-uniform float uLight;
-varying vec3 vWorld;
-void main() {
-  vec3 normal = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
-  if (normal.y < 0.0) normal = -normal;
-  float diffuse = clamp(dot(normal, normalize(vec3(-0.25, 1.0, 0.35))), 0.0, 1.0);
-  // Lit from above near the surface; a dark silhouette in the abyss.
-  vec3 color = uRock * (0.3 + 0.7 * diffuse) * (0.12 + 0.88 * uLight);
-  color += uRim * pow(1.0 - normal.y, 2.0) * 0.18;
-  gl_FragColor = vec4(applyFog(color, vWorld), 1.0);
-}
-`;
-
-const raysVertex = /* glsl */ `
-attribute vec3 aCenter;
-attribute vec2 aSize;
-attribute float aSeed;
-uniform vec3 uShear;
-varying vec2 vUv;
-varying float vSeed;
-varying float vDist;
-void main() {
-  float along = -position.y;
-  vec3 base = aCenter + uShear * along * aSize.y + vec3(0.0, position.y * aSize.y, 0.0);
-  vec3 toCamera = cameraPosition - base;
-  // Cylindrical billboard: each shaft turns to face the camera around Y.
-  vec3 right = normalize(vec3(toCamera.z, 0.0, -toCamera.x) + 1e-5);
-  vec3 world = base + right * position.x * aSize.x * (1.0 + along * 0.9);
-  vec4 view = viewMatrix * vec4(world, 1.0);
-  vUv = vec2(position.x + 0.5, along);
-  vSeed = aSeed;
-  vDist = -view.z;
-  gl_Position = projectionMatrix * view;
-}
-`;
-
-const raysFragment = /* glsl */ `
-uniform float uTime;
-uniform float uOpacity;
-uniform float uFogDensity;
-uniform vec3 uRayColor;
-varying vec2 vUv;
-varying float vSeed;
-varying float vDist;
-void main() {
-  float across = pow(clamp(1.0 - abs(vUv.x - 0.5) * 2.0, 0.0, 1.0), 2.2);
-  float fall = smoothstep(0.0, 0.06, vUv.y) * pow(1.0 - vUv.y, 1.6);
-  float shimmer = 0.7 + 0.3 * sin(uTime * 0.5 + vSeed * 40.0 + vUv.y * 3.0);
-  float fog = exp(-pow(uFogDensity * vDist * 0.8, 2.0));
-  float near = smoothstep(2.0, 8.0, vDist);
-  gl_FragColor = vec4(uRayColor, across * fall * shimmer * fog * near * uOpacity * 0.17);
+  gl_FragColor = vec4(mix(skyColor(dir), underwaterColor(dir), uUnder), 1.0);
 }
 `;
 
@@ -123,8 +86,10 @@ void main() {
   float edge = 1.0 - smoothstep(uBox * 0.32, uBox * 0.5, length(p - cameraPosition));
   float submerged = 1.0 - smoothstep(-1.5, -0.2, p.y);
   float fog = exp(-pow(uFogDensity * dist, 2.0));
-  vAlpha = edge * submerged * fog * (0.35 + 0.65 * aSeed);
-  gl_PointSize = uSize * uPixelRatio * (0.6 + aSeed * 0.9) / max(dist, 0.5);
+  float near = smoothstep(0.8, 2.5, dist);
+  vAlpha = edge * submerged * fog * near * (0.35 + 0.65 * aSeed);
+  // Near motes are larger than far ones, so parallax gives the water depth.
+  gl_PointSize = clamp(uSize * uPixelRatio * (0.6 + aSeed * 0.9) / max(dist, 1.0), 1.0, 7.0 * uPixelRatio);
   gl_Position = projectionMatrix * view;
 }
 `;
@@ -135,27 +100,16 @@ uniform float uOpacity;
 varying float vAlpha;
 void main() {
   float d = length(gl_PointCoord - 0.5);
-  gl_FragColor = vec4(uParticleColor, smoothstep(0.5, 0.1, d) * vAlpha * uOpacity * 0.75);
+  gl_FragColor = vec4(uParticleColor, (1.0 - smoothstep(0.1, 0.5, d)) * vAlpha * uOpacity * 0.9);
 }
 `;
-
-export function seabedHeight(x: number, z: number) {
-  // Rolling floor below the camera path, with two ridges that rise into
-  // view during the descent and stay below the camera's final depth.
-  return -62
-    + Math.sin(x * 0.045 + z * 0.02) * 3.2
-    + Math.sin(z * 0.06 - x * 0.03) * 2.1
-    + Math.sin((x + z) * 0.11) * 0.8
-    + 20 * Math.exp(-((x + 14) ** 2 + (z + 26) ** 2) / 300)
-    + 18 * Math.exp(-((x - 22) ** 2 + (z + 58) ** 2) / 500);
-}
 
 export function createEnvironment(shared: SharedUniforms, palette: Palette, mobile: boolean) {
   const rand = random(7);
 
   const skyGeometry = new SphereGeometry(1, 32, 16);
   const skyMaterial = new ShaderMaterial({
-    uniforms: shared,
+    uniforms: { ...shared, uRays: { value: 0 } },
     vertexShader: skyVertex,
     fragmentShader: skyFragment,
     side: BackSide,
@@ -166,69 +120,9 @@ export function createEnvironment(shared: SharedUniforms, palette: Palette, mobi
   sky.renderOrder = -1;
   sky.frustumCulled = false;
 
-  const seabedSegments = mobile ? 72 : 128;
-  const seabedGeometry = new PlaneGeometry(420, 420, seabedSegments, seabedSegments);
-  seabedGeometry.rotateX(-Math.PI / 2);
-  seabedGeometry.translate(0, 0, -50);
-  const ground = seabedGeometry.attributes.position;
-  for (let i = 0; i < ground.count; i++) ground.setY(i, seabedHeight(ground.getX(i), ground.getZ(i)));
-  seabedGeometry.computeBoundingSphere();
-  const seabedMaterial = new ShaderMaterial({
-    uniforms: {
-      ...shared,
-      uRock: { value: toVec3(mixRGB(palette.ocean, palette.cyan, 0.25)) },
-      uRim: { value: toVec3(palette.cyan) },
-    },
-    vertexShader: seabedVertex,
-    fragmentShader: seabedFragment,
-  });
-  const seabed = new Mesh(seabedGeometry, seabedMaterial);
-
-  const rayCount = mobile ? 5 : 9;
-  const rayPositions: number[] = [];
-  const rayCenters: number[] = [];
-  const raySizes: number[] = [];
-  const raySeeds: number[] = [];
-  const rayIndex: number[] = [];
-  for (let i = 0; i < rayCount; i++) {
-    const center = [(rand() - 0.5) * 56, -0.2, 10 - rand() * 70];
-    const size = [1.6 + rand() * 3.2, 26 + rand() * 22];
-    const seed = rand();
-    for (const [x, y] of [[-0.5, 0], [0.5, 0], [0.5, -1], [-0.5, -1]]) {
-      rayPositions.push(x, y, 0);
-      rayCenters.push(...center);
-      raySizes.push(...size);
-      raySeeds.push(seed);
-    }
-    const base = i * 4;
-    rayIndex.push(base, base + 2, base + 1, base, base + 3, base + 2);
-  }
-  const raysGeometry = new BufferGeometry();
-  raysGeometry.setAttribute('position', new BufferAttribute(new Float32Array(rayPositions), 3));
-  raysGeometry.setAttribute('aCenter', new BufferAttribute(new Float32Array(rayCenters), 3));
-  raysGeometry.setAttribute('aSize', new BufferAttribute(new Float32Array(raySizes), 2));
-  raysGeometry.setAttribute('aSeed', new BufferAttribute(new Float32Array(raySeeds), 1));
-  raysGeometry.setIndex(rayIndex);
-  const raysMaterial = new ShaderMaterial({
-    uniforms: {
-      uTime: shared.uTime,
-      uFogDensity: shared.uFogDensity,
-      uOpacity: { value: 0 },
-      uShear: { value: new Vector3(-0.12, 0, 0.25) },
-      uRayColor: { value: toVec3(mixRGB(palette.cyan, palette.offWhite, 0.5)) },
-    },
-    vertexShader: raysVertex,
-    fragmentShader: raysFragment,
-    transparent: true,
-    depthWrite: false,
-    blending: AdditiveBlending,
-    side: DoubleSide,
-  });
-  const rays = new Mesh(raysGeometry, raysMaterial);
-  rays.frustumCulled = false;
-
-  const box = 36;
-  const particleCount = mobile ? 260 : 640;
+  // A tighter box keeps the same count closer to the lens.
+  const box = 20;
+  const particleCount = mobile ? 70 : 180;
   const particlePositions = new Float32Array(particleCount * 3);
   const particleSeeds = new Float32Array(particleCount);
   for (let i = 0; i < particleCount; i++) {
@@ -243,36 +137,34 @@ export function createEnvironment(shared: SharedUniforms, palette: Palette, mobi
       uTime: shared.uTime,
       uFogDensity: shared.uFogDensity,
       uBox: { value: box },
-      uSize: { value: 30 },
+      uSize: { value: 28 },
       uPixelRatio: { value: 1 },
       uOpacity: { value: 0 },
-      uParticleColor: { value: toVec3(mixRGB(palette.cyan, palette.offWhite, 0.35)) },
+      uParticleColor: { value: toVec3(mixRGB(palette.cyan, palette.offWhite, 0.15)) },
     },
     vertexShader: particlesVertex,
     fragmentShader: particlesFragment,
     transparent: true,
     depthWrite: false,
-    blending: AdditiveBlending,
   });
   const particles = new Points(particlesGeometry, particlesMaterial);
+  particles.renderOrder = 2;
   particles.frustumCulled = false;
 
   return {
-    objects: [sky, seabed, rays, particles],
+    objects: [sky, particles],
     setPixelRatio(ratio: number) {
       particlesMaterial.uniforms.uPixelRatio.value = ratio;
     },
     update(frame: OceanFrame, cameraPosition: Vector3) {
       sky.position.copy(cameraPosition);
-      seabed.visible = frame.under > 0.001;
-      rays.visible = frame.rays > 0.001;
-      raysMaterial.uniforms.uOpacity.value = frame.rays;
+      skyMaterial.uniforms.uRays.value = frame.rays;
       particles.visible = frame.particles > 0.001;
       particlesMaterial.uniforms.uOpacity.value = frame.particles;
     },
     dispose() {
-      for (const geometry of [skyGeometry, seabedGeometry, raysGeometry, particlesGeometry]) geometry.dispose();
-      for (const material of [skyMaterial, seabedMaterial, raysMaterial, particlesMaterial]) material.dispose();
+      for (const geometry of [skyGeometry, particlesGeometry]) geometry.dispose();
+      for (const material of [skyMaterial, particlesMaterial]) material.dispose();
     },
   };
 }

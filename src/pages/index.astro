@@ -5,12 +5,12 @@ import ProjectCard from '../components/ProjectCard.astro';
 import { channels, projects, research, verifiedLink } from '../data/content';
 
 const github = verifiedLink(channels.github);
-const description = '미지의 가능성을 탐구하고, 실용적이고 검증 가능한 AI 시스템을 만드는 독립 연구·개발 공동체.';
+const description = 'An independent AI research and development community exploring unknown possibilities and building practical, verifiable AI systems.';
 const title = 'Arete Club — Independent AI Research & Development';
 ---
 
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -25,47 +25,46 @@ const title = 'Arete Club — Independent AI Research & Development';
     <script is:inline>document.documentElement.classList.add('js');</script>
   </head>
   <body>
-    <a class="skip-link" href="#about">본문으로 건너뛰기</a>
+    <a class="skip-link" href="#about">Skip to content</a>
     <main>
       <OceanExperience showContact={Boolean(github || channels.email)} />
 
       <div class="deep-content">
         <section id="about" class="section wrap about" aria-labelledby="about-title">
-          <div class="section-label mono"><span>01 / ABOUT ARETE CLUB</span><span class="tiny-cross" aria-hidden="true">+</span></div>
+          <div class="section-label">About</div>
           <div class="section-grid">
-            <div><p class="small-label">깊이 탐구하고, 충실하게 만듭니다.</p><h2 id="about-title">A Pursuit of<br />Excellence<span class="accent">.</span></h2></div>
+            <div><p class="small-label">Explore deeply. Build with care.</p><h2 id="about-title">A Pursuit of<br />Excellence.</h2></div>
             <div class="about-copy">
-              <p>Arete는 고대 그리스어의 탁월함에서 출발합니다. 우리는 기술이 본래의 목적을 명확하고 충실하게 수행할 때 탁월해진다고 믿습니다.</p>
-              <p>바다는 우리 가까이에 있으면서도 여전히 미지의 영역을 품고 있습니다. 그 탐험의 정신이 Arete Club의 출발점입니다.</p>
-              <div class="values mono"><span>EXPLORATION</span><span>EXCELLENCE</span><span>ENGINEERING</span></div>
+              <p>Arete takes its name from the ancient Greek idea of excellence. We believe technology achieves excellence when it serves its purpose with clarity and care.</p>
+              <p>The ocean is close to us, yet much of its depth remains unknown. We approach AI with the same curiosity: understanding today's technology more deeply and exploring possibilities still beyond our reach.</p>
+              <div class="values"><span>Exploration</span><span>Excellence</span><span>Engineering</span></div>
             </div>
           </div>
         </section>
 
         <section id="research" class="section wrap research" aria-labelledby="research-title">
-          <div class="section-label mono"><span>02 / RESEARCH</span><span class="tiny-cross" aria-hidden="true">+</span></div>
-          <div class="research-heading"><h2 id="research-title">What We Explore<span class="accent">.</span></h2><p>지능형 시스템이 더 신뢰할 수 있고 효율적이며,<br class="desktop-break" /> 인간의 의도에 부합하도록 만드는 방법을 탐구합니다.</p></div>
-          <p class="small-label research-caption">우리의 연구 관심 분야</p>
+          <div class="section-label">Research</div>
+          <div class="research-heading"><h2 id="research-title">What We Explore.</h2><p>We explore how to make intelligent systems more reliable, efficient, and aligned with human intent.</p></div>
+          <p class="small-label research-caption">Our research interests</p>
           <div class="research-list">
-            {research.map((area, index) => <article class="research-row">
-              <span class="research-index mono" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-              <h3>{area.title}</h3><p>{area.description}</p><span class="research-mark" aria-hidden="true">+</span>
+            {research.map((area) => <article class="research-row">
+              <h3>{area.title}</h3><p>{area.description}</p>
             </article>)}
           </div>
         </section>
 
         <section id="projects" class="section wrap projects" aria-labelledby="projects-title">
-          <div class="section-label mono"><span>03 / PROJECTS</span><span class="tiny-cross" aria-hidden="true">+</span></div>
-          <div class="projects-heading"><h2 id="projects-title">Ideas, into practice<span class="accent">.</span></h2><p>탐구를 실제 프로젝트로 이어갑니다.</p></div>
-          <div class="project-grid">{projects.map((project, index) => <ProjectCard project={project} index={index} />)}</div>
+          <div class="section-label">Projects</div>
+          <div class="projects-heading"><h2 id="projects-title">Ideas, into practice.</h2><p>Turning exploration into working projects.</p></div>
+          <div class="project-grid">{projects.map((project) => <ProjectCard project={project} />)}</div>
         </section>
 
         {github && <section id="exploration" class="section wrap exploration" aria-labelledby="exploration-title">
-          <div class="section-label mono"><span>04 / OPEN EXPLORATION</span><span class="tiny-cross" aria-hidden="true">+</span></div>
+          <div class="section-label"></div>
           <div class="exploration-body">
-            <h2 id="exploration-title">Open Exploration<span class="accent">.</span></h2>
+            <h2 id="exploration-title">Open Exploration.</h2>
             <div>
-              <p>공개된 프로젝트와 연구 활동은 GitHub에서 확인할 수 있습니다.</p>
+              <p>Explore our public projects and research on GitHub.</p>
               <a class="work-link" href={github}>Arete Club on GitHub <span aria-hidden="true">↗</span></a>
             </div>
           </div>
@@ -73,9 +72,9 @@ const title = 'Arete Club — Independent AI Research & Development';
 
         <footer id="contact" class="footer wrap" aria-label="Contact">
           <div class="footer-top"><a href="#top" class="wordmark">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a><p>Curiosity drives exploration.<br />Evidence guides progress.</p></div>
-          <div class="footer-bottom"><span class="mono">© Arete Club</span>
+          <div class="footer-bottom"><span>© Arete Club</span>
             {(github || channels.email) && <div class="official-links">{github && <a href={github}>GitHub ↗</a>}{channels.email && <a href={`mailto:${channels.email}`}>Contact ↗</a>}</div>}
-            <a class="back-top mono" href="#top">BACK TO SURFACE <span aria-hidden="true">↑</span></a>
+            <a class="back-top" href="#top">Back to surface <span aria-hidden="true">↑</span></a>
           </div>
         </footer>
       </div>

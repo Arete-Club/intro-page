@@ -29,6 +29,7 @@ export function mountOcean(ocean: HTMLElement) {
     delete ocean.dataset.ink;
     delete ocean.dataset.progress;
     stage!.style.removeProperty('--ocean-bg');
+    stage!.style.removeProperty('--copy-tint');
     for (const copy of copies) {
       copy.style.removeProperty('opacity');
       copy.style.removeProperty('transform');
@@ -68,6 +69,7 @@ export function mountOcean(ocean: HTMLElement) {
       const view = createOceanScene(host!, palette, fail);
       const applied = new Map<HTMLElement, string>();
       let background = '';
+      let tint = '';
       let progressLabel = '';
 
       // Overlay text, the stage color and test hooks; written only on change.
@@ -82,6 +84,8 @@ export function mountOcean(ocean: HTMLElement) {
         }
         const color = rgbCSS(frame.fogColor);
         if (color !== background) stage!.style.setProperty('--ocean-bg', background = color);
+        const copyTint = frame.copyTint.toFixed(3);
+        if (copyTint !== tint) stage!.style.setProperty('--copy-tint', tint = copyTint);
         if (ocean.dataset.phase !== frame.phase) ocean.dataset.phase = frame.phase;
         if (ocean.dataset.ink !== frame.ink) ocean.dataset.ink = frame.ink;
         const label = frame.progress.toFixed(2);
