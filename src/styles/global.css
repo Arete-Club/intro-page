@@ -28,9 +28,11 @@ p { line-height: 1.8; word-break: keep-all; overflow-wrap: break-word; }
 .skip-link { position: fixed; top: 12px; left: 16px; z-index: 40; background: var(--off-white); color: var(--bg); padding: 12px 18px; transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
 .grain {
-  position: fixed; inset: 0; z-index: 30; pointer-events: none; opacity: .05;
+  position: fixed; inset: 0; z-index: 30; pointer-events: none; opacity: .05; transition: opacity .8s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+/* Deep water reads cleaner with less film grain (motion.md L03). */
+body:has(.ocean:is([data-phase='descent'], [data-phase='abyss'])) .grain { opacity: .025; }
 
 /* Ocean sequence — static layout (no JS, reduced motion, WebGL fallback):
    the three scenes stack as panels from bright surface to the abyss. */
@@ -54,7 +56,7 @@ nav { display: flex; gap: 35px; font-size: 13px; }
 /* Ocean sequence — cinematic layout: the stage is pinned while scroll
    drives the camera. Chosen before paint via the inline `.js` flag. */
 @media (prefers-reduced-motion: no-preference) {
-  .js .ocean:not([data-scene='fallback']) { height: 520svh; }
+  .js .ocean:not([data-scene='fallback']) { height: 440svh; }
   .js .ocean:not([data-scene='fallback']) .ocean-stage {
     position: sticky; top: 0; height: 100svh; min-height: 560px; overflow: hidden;
     background: var(--ocean-bg, var(--sky-horizon));
@@ -66,15 +68,22 @@ nav { display: flex; gap: 35px; font-size: 13px; }
   .js .ocean:not([data-scene='fallback']) .ocean-canvas canvas { display: block; width: 100%; height: 100%; }
   .js .ocean[data-scene='ready'] .ocean-canvas { opacity: 1; }
   .js .ocean[data-scene='ready'] .ocean-fallback { opacity: 0; }
-  /* Underwater only: deepen the top edge for the header and vignette the frame. */
+  /* Underwater only: deepen the strip behind the header (no lower, so the light
+     from the surface stays visible) and vignette the frame. */
   .js .ocean:not([data-scene='fallback']) .ocean-shade {
     opacity: 0; transition: opacity .6s;
-    background: linear-gradient(to bottom, rgb(6 21 33 / .5), rgb(6 21 33 / .4) 12%, transparent 28%), radial-gradient(ellipse 130% 120% at 50% 40%, transparent 55%, rgb(3 10 16 / .4) 100%);
+    background: linear-gradient(to bottom, rgb(6 21 33 / .5), rgb(6 21 33 / .4) 11%, transparent 17%), radial-gradient(ellipse 130% 120% at 50% 40%, transparent 55%, rgb(3 10 16 / .4) 100%);
   }
   .js .ocean[data-ink='light'] .ocean-shade { opacity: 1; }
   .js .ocean:not([data-scene='fallback']) .scene-copy { position: absolute; inset: 0; min-height: 0; padding: 0; background: none; pointer-events: none; will-change: opacity, transform; }
   .js .ocean:not([data-scene='fallback']) .hero-copy { align-items: flex-start; padding-top: clamp(128px, 20svh, 210px); }
-  .js .ocean:not([data-scene='fallback']) .descent-copy { align-items: flex-end; padding-bottom: 19svh; }
+  /* Copy sinks with the camera: top (surface) → upper middle, under the
+     light from the surface (descent) → lower middle (abyss). */
+  .js .ocean:not([data-scene='fallback']) .descent-copy { align-items: flex-start; padding-top: 34svh; }
+  .js .ocean:not([data-scene='fallback']) .abyss-copy { align-items: flex-end; padding-bottom: 13svh; }
+  /* Scene copy dims towards Muted Cyan as the light fades (--copy-tint from the timeline). */
+  .js .ocean[data-scene='ready'] .statement { color: color-mix(in srgb, var(--off-white), var(--cyan) calc(var(--copy-tint, 0) * 100%)); }
+  .js .ocean[data-scene='ready'] .statement-sub { color: inherit; }
   .js .ocean:not([data-scene='fallback']) .scene-copy.statement { opacity: 0; }
   .js .ocean:not([data-scene='fallback']) .scroll-cue {
     /* Centered without transform: the scroll script owns `transform` here. */
@@ -86,7 +95,8 @@ nav { display: flex; gap: 35px; font-size: 13px; }
 @keyframes cue { 0% { transform: scaleY(0); opacity: 0; } 35% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1) translateY(100%); opacity: 0; } }
 
 /* Research laboratory — typography and space, no cards. */
-.deep-content { position: relative; background: var(--bg); }
+/* The last light: the page rises from the abyss navy to Deep Ocean and settles back, without a seam. */
+.deep-content { position: relative; background: var(--bg) linear-gradient(to bottom, var(--bg), var(--deep) 45svh, var(--bg) 120svh); }
 .section { padding-block: 100px 120px; scroll-margin-top: 30px; }
 .section-label { color: var(--muted); font-size: 13px; padding-bottom: 22px; border-bottom: 1px solid var(--rule); margin-bottom: 63px; }
 .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9%; }
@@ -115,6 +125,8 @@ h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; l
 .project-body p { font-size: 16px; color: var(--body-copy); max-width: 380px; }
 .project-links { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 30px; font-size: 13px; }
 .project-status { color: var(--muted); }
+/* Monospace only for real data, such as a repository path. */
+.record { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
 .exploration-body { display: flex; justify-content: space-between; align-items: flex-end; gap: 50px; }
 .exploration-body p { max-width: 420px; font-size: 16px; color: var(--muted); margin-bottom: 30px; }
 .work-link { display: inline-flex; gap: 35px; align-items: center; border-bottom: 1px solid currentColor; padding-bottom: 9px; font-size: 13px; white-space: nowrap; }
@@ -144,7 +156,6 @@ h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; l
   .site-header { padding-block: 23px; }
   .wordmark { font-size: 22px; }
   nav { gap: 18px; font-size: 11px; }
-  .js .ocean:not([data-scene='fallback']) { height: 440svh; }
   .js .ocean:not([data-scene='fallback']) .hero-copy { padding-top: 112px; }
   .scene-eyebrow { margin-bottom: 20px; font-size: 13px; }
   .hero-title, .statement-lead { font-size: clamp(40px, 12vw, 64px); line-height: 1.05; }
@@ -168,6 +179,10 @@ h2 { font-size: clamp(36px, 4.1vw, 66px); font-weight: 400; line-height: 1.13; l
   .footer-top { flex-direction: column; gap: 25px; }
   .footer-top .wordmark { font-size: 30px; }
   .footer-bottom { margin-top: 50px; flex-wrap: wrap; }
+}
+/* Shorter sequence on phones — only while the scroll-driven layout is active. */
+@media (max-width: 600px) and (prefers-reduced-motion: no-preference) {
+  .js .ocean:not([data-scene='fallback']) { height: 420svh; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

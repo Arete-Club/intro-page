@@ -172,6 +172,19 @@ test('T07: reduced motion stays static and can be toggled without duplicate canv
   await expect(page.locator('canvas')).toHaveCount(1);
 });
 
+for (const [width, height] of [[375, 812], [1440, 900]]) {
+  test(`T07: reduced motion at ${width}px leaves no blank gap after the static scenes`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.locator('.ocean')).toHaveAttribute('data-scene', 'static');
+    // The stacked panels are the whole section; any extra height is empty navy before About.
+    const [ocean, stage] = await page.evaluate(() =>
+      ['.ocean', '.ocean-stage'].map((selector) => document.querySelector<HTMLElement>(selector)!.offsetHeight));
+    expect(ocean).toBe(stage);
+  });
+}
+
 test('T07: no WebGL preserves all content and usable links', async ({ page }) => {
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
@@ -254,17 +267,21 @@ test('T10: the crossing has no bright horizontal rim across the water', async ({
   for (const width of [1440, 375]) {
     await page.setViewportSize({ width, height: 900 });
     await ready(page);
-    for (const progress of [0.26, 0.28, 0.3, 0.32, 0.34, 0.36]) {
+    // Crossing frames skip the sun on the right; once submerged (L02) the
+    // whole width is checked, so no glint may remain on the far waterline.
+    for (const [progress, fullWidth] of [
+      [0.22, false], [0.26, false], [0.3, false], [0.34, false], [0.38, true], [0.4, true], [0.42, true], [0.45, true],
+    ] as const) {
       await scrollOcean(page, progress);
       // Read the rendered canvas in the draw frame (before the browser clears
-      // its non-preserved backbuffer). Exclude the sun on the right and HTML.
-      const band = await page.locator('canvas').evaluate(async (canvas: HTMLCanvasElement) => {
+      // its non-preserved backbuffer).
+      const band = await page.locator('canvas').evaluate(async (canvas: HTMLCanvasElement, whole: boolean) => {
         return new Promise<{ brightRim: number; peak: number }>((resolve) => requestAnimationFrame(() => {
           const gl = canvas.getContext('webgl2')!;
           const height = gl.drawingBufferHeight;
-          const width = Math.floor(gl.drawingBufferWidth * 0.5);
+          const width = Math.floor(gl.drawingBufferWidth * (whole ? 1 : 0.5));
           const pixels = new Uint8Array(width * height * 4);
-          gl.readPixels(Math.floor(gl.drawingBufferWidth * 0.1), 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          gl.readPixels(whole ? 0 : Math.floor(gl.drawingBufferWidth * 0.1), 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
           const luma = (x: number, y: number) => {
             const i = (y * width + x) * 4;
             return (pixels[i] * 0.2126 + pixels[i + 1] * 0.7152 + pixels[i + 2] * 0.0722) / 255;
@@ -284,7 +301,7 @@ test('T10: the crossing has no bright horizontal rim across the water', async ({
           }
           resolve({ brightRim, peak });
         }));
-      });
+      }, fullWidth);
       expect(band.peak, 'must sample a rendered frame, not a cleared buffer').toBeGreaterThan(0.1);
       expect(band.brightRim, `white rim at ${width}px / progress ${progress}`).toBeLessThan(0.5);
     }
@@ -301,7 +318,9 @@ test('T11: structure carries information, not template chrome', async ({ page })
       const text = el.textContent!.trim();
       const issues: string[] = [];
       if (style.textTransform === 'uppercase') issues.push(`uppercase: ${text}`);
-      if (/mono/i.test(style.fontFamily)) issues.push(`monospace: ${text}`);
+      // Monospace is reserved for real data, such as a repository path.
+      const record = el.closest('.record') && /^[\w.-]+\/[\w.-]+$/.test(text);
+      if (/mono/i.test(style.fontFamily) && !record) issues.push(`monospace: ${text}`);
       // Unordered lists get no sequence numbers; a bare cross implies an expansion that does not exist.
       if (/^(\d{2}|\+)$/.test(text) || /\b\d{2} \//.test(text)) issues.push(`marker: ${text}`);
       return issues;
@@ -315,6 +334,55 @@ test('T11: structure carries information, not template chrome', async ({ page })
   }
 });
 
+for (const [width, height] of [[1440, 900], [375, 812]]) {
+  test(`T12: scene copy keeps 4.5:1 against the rendered pixels behind it at ${width}px`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height });
+    await ready(page);
+    for (const [key, progress] of [
+      ['hero', 0], ['descent', 0.44], ['descent', 0.5], ['descent', 0.56], ['descent', 0.62], ['abyss', 0.8], ['abyss', 0.9], ['abyss', 1],
+    ] as const) {
+      await scrollOcean(page, progress);
+      await expect(page.locator(copy(key))).toHaveCSS('opacity', '1');
+      const result = await page.evaluate(async (selector) => {
+        const wrap = document.querySelector<HTMLElement>(`${selector} .wrap`)!;
+        const ink = getComputedStyle(wrap.querySelector(':is(.hero-title, .statement-lead)')!).color;
+        // Computed colors arrive as rgb(…) or, from color-mix, color(srgb …).
+        const channels = ink.startsWith('color(')
+          ? ink.slice(11, -1).split(' ').slice(0, 3).map((v) => Number(v) * 255)
+          : ink.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+        const linear = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+        const luminance = (r: number, g: number, b: number) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+        const text = luminance(channels[0], channels[1], channels[2]);
+        const canvas = document.querySelector<HTMLCanvasElement>('.ocean canvas')!;
+        const box = wrap.getBoundingClientRect();
+        const frame = canvas.getBoundingClientRect();
+        return new Promise<{ ratio: number; ink: string }>((resolve) => requestAnimationFrame(() => {
+          const gl = canvas.getContext('webgl2')!;
+          const scale = gl.drawingBufferWidth / frame.width;
+          const x = Math.max(0, Math.floor((box.left - frame.left) * scale));
+          const w = Math.min(gl.drawingBufferWidth - x, Math.ceil(box.width * scale));
+          const top = Math.max(0, Math.floor((box.top - frame.top) * scale));
+          const h = Math.min(gl.drawingBufferHeight - top, Math.ceil(box.height * scale));
+          const pixels = new Uint8Array(w * h * 4);
+          gl.readPixels(x, gl.drawingBufferHeight - top - h, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          const values: number[] = [];
+          for (let i = 0; i < pixels.length; i += 16) values.push(luminance(pixels[i], pixels[i + 1], pixels[i + 2]));
+          values.sort((a, b) => a - b);
+          // Light ink is judged against the brightest 2% behind it, dark ink
+          // against the darkest 2%: a few drifting motes may not decide it.
+          const background = text > values[values.length >> 1]
+            ? values[Math.floor(values.length * 0.98)]
+            : values[Math.floor(values.length * 0.02)];
+          const [hi, lo] = text > background ? [text, background] : [background, text];
+          resolve({ ratio: (hi + 0.05) / (lo + 0.05), ink });
+        }));
+      }, copy(key));
+      expect(result.ratio, `${key} at ${progress} (${result.ink})`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+}
+
 test('V01: desktop/mobile captures and browser rendering profile', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   const profiles = [];
@@ -322,8 +390,8 @@ test('V01: desktop/mobile captures and browser rendering profile', async ({ page
     await page.setViewportSize({ width, height: 900 });
     await ready(page);
     for (const [label, progress] of [
-      ['surface', 0], ['crossing-enter', 0.25], ['crossing', 0.3],
-      ['crossing-exit', 0.35], ['submerged', 0.4], ['descent', 0.58], ['abyss', 1],
+      ['surface', 0], ['approach', 0.17], ['crossing-enter', 0.22], ['crossing', 0.3],
+      ['crossing-exit', 0.38], ['submerged', 0.44], ['descent', 0.52], ['deep', 0.66], ['abyss', 1],
     ] as const) {
       await scrollOcean(page, progress);
       await page.waitForTimeout(500);

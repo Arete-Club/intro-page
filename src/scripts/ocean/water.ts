@@ -3,7 +3,7 @@ import {
 } from 'three';
 import { mixRGB } from './color';
 import { fogChunk, skyChunk, toVec3, waveChunk, type SharedUniforms } from './glsl';
-import { smoothstep, type OceanFrame, type Palette } from './timeline';
+import type { OceanFrame, Palette } from './timeline';
 
 const WATERLINE_DISTANCE = 0.6;
 
@@ -26,6 +26,7 @@ ${fogChunk}
 uniform vec3 uWaterBody;
 uniform vec3 uSurfaceLight;
 uniform float uLight;
+uniform float uUnder;
 varying vec3 vWorld;
 void main() {
   vec3 toCamera = cameraPosition - vWorld;
@@ -36,17 +37,26 @@ void main() {
   vec3 reflected = reflect(-view, normal);
   reflected.y = abs(reflected.y);
   vec3 above = mix(uWaterBody, skyColor(reflected), fresnel);
-  above += uSunColor * pow(max(dot(reflected, uSunDir), 0.0), 420.0) * 0.8;
+  // Sun glitter belongs to the view from above; it would leave a thin
+  // bright line on the far waterline once the camera is in the waves.
+  above += uSunColor * pow(max(dot(reflected, uSunDir), 0.0), 420.0) * 0.8 * smoothstep(-0.1, 0.3, cameraPosition.y);
   // A diffuse window from below, without an abrupt front/back-face switch
   // when a wave passes the lens. Both sides meet over a narrow depth band.
   float overhead = clamp(-view.y, 0.0, 1.0) + normal.x * 0.6 + normal.z * 0.3;
-  float window = smoothstep(0.5, 0.9, overhead);
-  vec3 below = mix(fogTint(-view), uSurfaceLight, window * uLight * 0.65);
-  float aboveWeight = smoothstep(-0.12, 0.12, toCamera.y);
+  // Wide enough that the rippling light overhead enters the frame when the
+  // camera looks back up after the crossing (motion.md L03).
+  float window = smoothstep(0.25, 0.7, overhead);
+  // Full strength only once the camera is under; within the waves the
+  // undersides of nearby crests must not flash on the far waterline.
+  float lift = smoothstep(0.85, 1.0, uUnder);
+  vec3 below = mix(fogTint(-view), uSurfaceLight, window * uLight * mix(0.65, 0.9, lift));
+  // Once the camera is clearly under, every crest and trough is seen from
+  // below; otherwise far troughs show their top side as a pale line.
+  float aboveWeight = smoothstep(-0.12, 0.12, toCamera.y) * smoothstep(-0.35, -0.05, cameraPosition.y);
   vec3 color = mix(below, above, aboveWeight);
   // At underwater grazing angles the open-water light field must remain
   // visible. An opaque underside would draw a false horizontal horizon.
-  float opacity = mix(window * uLight * 0.5, 1.0, aboveWeight);
+  float opacity = mix(window * uLight * mix(0.5, 0.85, lift), 1.0, aboveWeight);
   gl_FragColor = vec4(applyFog(color, vWorld), opacity);
 }
 `;
@@ -73,7 +83,10 @@ void main() {
   float d = vWorld.y - waveHeight(vWorld.xz);
   float feather = max(fwidth(d) * 2.0, 0.025);
   float below = 1.0 - smoothstep(-feather, feather, d);
-  gl_FragColor = vec4(uUnderColor, below * 0.3 * uFade);
+  // Nearly opaque, darkening away from the line: the lens reads as half in
+  // the water, and the close-up surface behind it cannot show a second edge.
+  vec3 tint = uUnderColor * (1.0 - 0.3 * clamp(-d * 2.0, 0.0, 1.0));
+  gl_FragColor = vec4(tint, below * 0.92 * uFade);
 }
 `;
 
@@ -134,11 +147,10 @@ export function createWater(shared: SharedUniforms, palette: Palette, mobile: bo
       waterline.scale.set(halfHeight * camera.aspect, halfHeight, 1);
     },
     update(frame: OceanFrame) {
-      const [x, y, z] = frame.position;
+      const [x, , z] = frame.position;
       surface.position.set(x, 0, z - 6);
-      const fade = 1 - smoothstep(0.15, 0.65, Math.abs(y));
-      waterline.visible = fade > 0;
-      waterlineMaterial.uniforms.uFade.value = fade;
+      waterline.visible = frame.waterline > 0;
+      waterlineMaterial.uniforms.uFade.value = frame.waterline;
       toVec3(frame.water, waterlineMaterial.uniforms.uUnderColor.value);
     },
     dispose() {

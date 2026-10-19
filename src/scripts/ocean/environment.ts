@@ -53,8 +53,10 @@ vec3 underwaterColor(vec3 dir) {
     scattered += lightField(p) * submerged * exp(-sampleDistance * 0.018) * 0.2;
   }
   float overhead = smoothstep(-0.4, 0.7, dir.y);
+  // The light pools overhead; towards the horizon a quarter of it remains.
+  float skyward = mix(0.25, 1.0, smoothstep(0.1, 0.6, dir.y));
   vec3 lightTint = mix(uFogColor, uSunColor, 0.18);
-  return fogTint(dir) + lightTint * (scattered * 1.35 + overhead * 0.12) * uRays;
+  return fogTint(dir) + lightTint * (scattered * 1.35 * skyward + overhead * 0.12) * uRays;
 }
 
 void main() {
@@ -84,9 +86,10 @@ void main() {
   float edge = 1.0 - smoothstep(uBox * 0.32, uBox * 0.5, length(p - cameraPosition));
   float submerged = 1.0 - smoothstep(-1.5, -0.2, p.y);
   float fog = exp(-pow(uFogDensity * dist, 2.0));
-  float near = smoothstep(1.0, 3.5, dist);
+  float near = smoothstep(0.8, 2.5, dist);
   vAlpha = edge * submerged * fog * near * (0.35 + 0.65 * aSeed);
-  gl_PointSize = clamp(uSize * uPixelRatio * (0.6 + aSeed * 0.9) / max(dist, 1.0), 1.0, 3.0 * uPixelRatio);
+  // Near motes are larger than far ones, so parallax gives the water depth.
+  gl_PointSize = clamp(uSize * uPixelRatio * (0.6 + aSeed * 0.9) / max(dist, 1.0), 1.0, 7.0 * uPixelRatio);
   gl_Position = projectionMatrix * view;
 }
 `;
@@ -97,7 +100,7 @@ uniform float uOpacity;
 varying float vAlpha;
 void main() {
   float d = length(gl_PointCoord - 0.5);
-  gl_FragColor = vec4(uParticleColor, (1.0 - smoothstep(0.1, 0.5, d)) * vAlpha * uOpacity * 0.35);
+  gl_FragColor = vec4(uParticleColor, (1.0 - smoothstep(0.1, 0.5, d)) * vAlpha * uOpacity * 0.9);
 }
 `;
 
@@ -117,7 +120,8 @@ export function createEnvironment(shared: SharedUniforms, palette: Palette, mobi
   sky.renderOrder = -1;
   sky.frustumCulled = false;
 
-  const box = 36;
+  // A tighter box keeps the same count closer to the lens.
+  const box = 20;
   const particleCount = mobile ? 70 : 180;
   const particlePositions = new Float32Array(particleCount * 3);
   const particleSeeds = new Float32Array(particleCount);
@@ -133,7 +137,7 @@ export function createEnvironment(shared: SharedUniforms, palette: Palette, mobi
       uTime: shared.uTime,
       uFogDensity: shared.uFogDensity,
       uBox: { value: box },
-      uSize: { value: 14 },
+      uSize: { value: 28 },
       uPixelRatio: { value: 1 },
       uOpacity: { value: 0 },
       uParticleColor: { value: toVec3(mixRGB(palette.cyan, palette.offWhite, 0.15)) },

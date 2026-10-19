@@ -25,17 +25,25 @@ export type OceanFrame = {
   sunlight: number;
   rays: number;
   particles: number;
+  /** Strength of the waterline split on the lens; 1 while the camera is within the waves. */
+  waterline: number;
+  /** How far scene copy dims towards Muted Cyan with depth (L04). */
+  copyTint: number;
   copy: Record<CopyKey, number>;
 };
 
-// Scroll progress → camera keyframes. Scene 02 lingers around y = 0 so the
-// waterline crossing is visible; the last segment eases to rest (Scene 04).
+// Scroll progress → camera keyframes (motion.md L01). The hero holds, the
+// camera drops to the water, then crosses it slowly through Scene 02 — the
+// one authored moment. Just under, it looks back up at the light it left,
+// then turns down into the abyss and eases to rest (Scene 04).
 const KEYS: readonly { p: number; position: Vec3; target: Vec3 }[] = [
   { p: 0, position: [0, 3.2, 40], target: [0, 14, -80] },
-  { p: 0.18, position: [0, 2.6, 33], target: [0, 4, -80] },
-  { p: 0.25, position: [0, 0.6, 27], target: [0, -2.5, -70] },
-  { p: 0.35, position: [0, -0.6, 21], target: [0, -6, -64] },
-  { p: 0.42, position: [0.6, -6, 15], target: [0, -14, -56] },
+  { p: 0.13, position: [0, 2.9, 36], target: [0, 10.5, -80] },
+  { p: 0.2, position: [0, 0.45, 30], target: [0, -0.8, -70] },
+  { p: 0.3, position: [0, 0, 26], target: [0, 0.2, -66] },
+  { p: 0.4, position: [0, -0.45, 22], target: [0, 3.5, -60] },
+  { p: 0.5, position: [0.4, -6, 16], target: [0, 4, -50] },
+  { p: 0.62, position: [1.1, -19, 8], target: [0, -15, -54] },
   { p: 0.75, position: [1.8, -34, -1], target: [0, -50, -55] },
   { p: 1, position: [2.2, -46, -8], target: [0, -54, -60] },
 ];
@@ -120,10 +128,12 @@ export function oceanFrame(rawProgress: number, palette: Palette): OceanFrame {
   // continuous rather than a cut between an "above" and "below" state.
   const under = smoothstep(0.4, -0.4, position[1]);
   const depth = clamp01(position[1] / ABYSS_Y);
+  // Bright only right at the surface: a few metres down the water is Ocean
+  // Blue, so the light overhead reads against it and copy stays legible.
   const water = ramp(depth, [
     [0, mixRGB(palette.ocean, palette.cyan, 0.38)],
-    [0.3, palette.ocean],
-    [0.65, palette.deep],
+    [0.05, palette.ocean],
+    [0.5, palette.deep],
     [1, palette.bg],
   ]);
   const fogColor = mixRGB(skyOf(palette).horizon, water, under);
@@ -144,11 +154,13 @@ export function oceanFrame(rawProgress: number, palette: Palette): OceanFrame {
     sunlight: lerp(1, Math.exp(-depth * 3.2), under),
     rays: under * (1 - smoothstep(0.35, 0.82, depth)),
     particles: under * lerp(0.75, 0.16, smoothstep(0.1, 1, depth)),
+    waterline: 1 - smoothstep(0.35, 0.7, Math.abs(position[1])),
+    copyTint: 0.35 * smoothstep(0.2, 1, depth),
     copy: {
-      hero: 1 - smoothstep(0.015, 0.11, progress),
+      hero: 1 - smoothstep(0.13, 0.2, progress),
       cue: 1 - smoothstep(0, 0.045, progress),
-      descent: band(progress, 0.45, 0.52, 0.63, 0.7),
-      abyss: smoothstep(0.8, 0.87, progress),
+      descent: band(progress, 0.38, 0.44, 0.62, 0.68),
+      abyss: smoothstep(0.73, 0.79, progress),
     },
   };
 }

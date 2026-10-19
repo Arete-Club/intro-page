@@ -3,6 +3,7 @@ import { type Project, verifiedLink } from '../data/content';
 interface Props { project: Project }
 const { project } = Astro.props;
 const href = verifiedLink(project.href);
+const repository = href ? new URL(href).pathname.replace(/^\/|\/$/g, '') : null;
 ---
 
 <article class="project-card" data-project={project.name}>
@@ -13,6 +14,6 @@ const href = verifiedLink(project.href);
   </div>
   {(project.status || href) && <div class="project-links">
     {project.status && <span class="project-status">{project.status}</span>}
-    {href && <a href={href} aria-label={`${project.name} GitHub`}>GitHub <span aria-hidden="true">↗</span></a>}
+    {href && <a href={href} aria-label={`GitHub repository ${repository}`}><span class="record">{repository}</span> <span aria-hidden="true">↗</span></a>}
   </div>}
 </article>
