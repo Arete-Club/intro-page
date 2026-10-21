@@ -25,6 +25,8 @@ export type OceanFrame = {
   sunlight: number;
   rays: number;
   particles: number;
+  /** Bioluminescence: faint pulsing lights that appear only in the deep water. */
+  glow: number;
   /** Strength of the waterline split on the lens; 1 while the camera is within the waves. */
   waterline: number;
   /** How far scene copy dims towards Muted Cyan with depth (L04). */
@@ -154,6 +156,7 @@ export function oceanFrame(rawProgress: number, palette: Palette): OceanFrame {
     sunlight: lerp(1, Math.exp(-depth * 3.2), under),
     rays: under * (1 - smoothstep(0.35, 0.82, depth)),
     particles: under * lerp(0.75, 0.16, smoothstep(0.1, 1, depth)),
+    glow: smoothstep(0.45, 0.85, depth),
     waterline: 1 - smoothstep(0.35, 0.7, Math.abs(position[1])),
     copyTint: 0.35 * smoothstep(0.2, 1, depth),
     copy: {

@@ -138,6 +138,16 @@ describe('T03: scroll-driven ocean timeline', () => {
     }
   });
 
+  it('lights the abyss with bioluminescence only in the deep water', () => {
+    // Nothing glows while the light from the surface still reaches the descent copy.
+    for (const frame of samples.filter((f) => f.progress <= 0.62)) expect(frame.glow).toBe(0);
+    expect(at(0.8).glow).toBeGreaterThan(0.5);
+    expect(at(1).glow).toBe(1);
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i].glow).toBeGreaterThanOrEqual(samples[i - 1].glow);
+    }
+  });
+
   it('fades overlay copy in and out by scroll range', () => {
     expect(at(0).copy.hero).toBe(1);
     expect(at(0.12).copy.hero).toBe(1);

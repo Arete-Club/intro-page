@@ -89,7 +89,7 @@ test('T04: real ocean canvas, continuous descent and reversible scroll', async (
   expect(errors).toEqual([]);
 });
 
-for (const [width, height] of [[375, 667], [375, 900], [768, 900], [1440, 900]]) {
+for (const [width, height] of [[375, 667], [375, 900], [390, 844], [768, 900], [1440, 900]]) {
   test(`T05: readable layout at ${width}x${height}px`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await ready(page);
@@ -273,6 +273,10 @@ test('T10: the crossing has no bright horizontal rim across the water', async ({
       [0.22, false], [0.26, false], [0.3, false], [0.34, false], [0.38, true], [0.4, true], [0.42, true], [0.45, true],
     ] as const) {
       await scrollOcean(page, progress);
+      // data-progress rounds to two decimals, so it can report the target
+      // while the camera is still up to .005 away. Allow the existing 4.5/s
+      // easing to reach its 1e-4 snap tolerance before judging a pixel band.
+      await page.waitForTimeout(1000);
       // Read the rendered canvas in the draw frame (before the browser clears
       // its non-preserved backbuffer).
       const band = await page.locator('canvas').evaluate(async (canvas: HTMLCanvasElement, whole: boolean) => {
@@ -399,6 +403,11 @@ test('V01: desktop/mobile captures and browser rendering profile', async ({ page
     }
     for (const section of ['about', 'research', 'projects', 'exploration', 'contact']) {
       await page.locator(`#${section}`).scrollIntoViewIfNeeded();
+      await page.locator(`#${section}`).evaluate(async (el) => {
+        // Let IntersectionObserver start the reveal, then capture its settled state.
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {})));
+      });
       await page.screenshot({ path: testInfo.outputPath(`${width}-${section}.png`) });
     }
     await scrollOcean(page, 0);

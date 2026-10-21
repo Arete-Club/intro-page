@@ -7,3 +7,5 @@ playwright-report/
 artifacts/preview/
 .DS_Store
 .claude
+.impeccable
+references
