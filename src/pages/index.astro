@@ -33,8 +33,8 @@ const title = 'Arete Club — Independent AI Research & Development';
         <section id="about" class="section wrap about" aria-labelledby="about-title">
           <div class="section-label">About</div>
           <div class="section-grid">
-            <div><p class="small-label">Explore deeply. Build with care.</p><h2 id="about-title">A Pursuit of<br />Excellence.</h2></div>
-            <div class="about-copy">
+            <div data-reveal><p class="small-label">Explore deeply. Build with care.</p><h2 id="about-title">A Pursuit of<br />Excellence.</h2></div>
+            <div class="about-copy" data-reveal="detail">
               <p>Arete takes its name from the ancient Greek idea of excellence. We believe technology achieves excellence when it serves its purpose with clarity and care.</p>
               <p>The ocean is close to us, yet much of its depth remains unknown. We approach AI with the same curiosity: understanding today's technology more deeply and exploring possibilities still beyond our reach.</p>
               <div class="values"><span>Exploration</span><span>Excellence</span><span>Engineering</span></div>
@@ -44,28 +44,28 @@ const title = 'Arete Club — Independent AI Research & Development';
 
         <section id="research" class="section wrap research" aria-labelledby="research-title">
           <div class="section-label">Research</div>
-          <div class="research-heading"><h2 id="research-title">What We Explore.</h2><p>We explore how to make intelligent systems more reliable, efficient, and aligned with human intent.</p></div>
+          <div class="research-heading section-grid"><h2 id="research-title" data-reveal>What We Explore.</h2><p data-reveal="detail">We explore how to make intelligent systems more reliable, efficient, and aligned with human intent.</p></div>
           <p class="small-label research-caption">Our research interests</p>
           <div class="research-list">
-            {research.map((area) => <article class="research-row">
-              <h3>{area.title}</h3><p>{area.description}</p>
+            {research.map((area) => <article class="research-row section-grid">
+              <h3 data-reveal>{area.title}</h3><p data-reveal="detail">{area.description}</p>
             </article>)}
           </div>
         </section>
 
         <section id="projects" class="section wrap projects" aria-labelledby="projects-title">
           <div class="section-label">Projects</div>
-          <div class="projects-heading"><h2 id="projects-title">Ideas, into practice.</h2><p>Turning exploration into working projects.</p></div>
+          <div class="projects-heading section-grid"><h2 id="projects-title" data-reveal>Ideas, into practice.</h2><p data-reveal="detail">Turning exploration into working projects.</p></div>
           <div class="project-grid">{projects.map((project) => <ProjectCard project={project} />)}</div>
         </section>
 
         {github && <section id="exploration" class="section wrap exploration" aria-labelledby="exploration-title">
           <div class="section-label"></div>
-          <div class="exploration-body">
-            <h2 id="exploration-title">Open Exploration.</h2>
-            <div>
+          <div class="exploration-body section-grid">
+            <h2 id="exploration-title" data-reveal>Open Exploration.</h2>
+            <div data-reveal="detail">
               <p>Explore our public projects and research on GitHub.</p>
-              <a class="work-link" href={github}>Arete Club on GitHub <span aria-hidden="true">↗</span></a>
+              <a class="work-link action-link" href={github}>Arete Club on GitHub <span class="link-arrow" aria-hidden="true">↗</span></a>
             </div>
           </div>
         </section>}
@@ -82,8 +82,15 @@ const title = 'Arete Club — Independent AI Research & Development';
     <div class="grain" aria-hidden="true"></div>
     <script>
       import { mountOcean } from '../scripts/ocean/mount';
+      import { mountEditorial } from '../scripts/editorial';
+      const content = document.querySelector<HTMLElement>('.deep-content');
+      if (content) mountEditorial(content);
       const ocean = document.querySelector<HTMLElement>('.ocean');
-      if (ocean) mountOcean(ocean);
+      if (ocean) {
+        // Decide the static layout before anchor placement when observation is unavailable.
+        if (typeof IntersectionObserver === 'function') mountOcean(ocean);
+        else ocean.dataset.scene = 'fallback';
+      }
     </script>
   </body>
 </html>
