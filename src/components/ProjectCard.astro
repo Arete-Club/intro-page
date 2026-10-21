@@ -6,14 +6,16 @@ const href = verifiedLink(project.href);
 const repository = href ? new URL(href).pathname.replace(/^\/|\/$/g, '') : null;
 ---
 
-<article class="project-card" data-project={project.name}>
-  <div class="project-body">
+<article class="project-card section-grid" data-project={project.name}>
+  <div class="project-heading" data-reveal>
     <p class="project-category">{project.category}</p>
     <h3>{project.name}</h3>
-    <p>{project.summary}</p>
   </div>
-  {(project.status || href) && <div class="project-links">
-    {project.status && <span class="project-status">{project.status}</span>}
-    {href && <a href={href} aria-label={`GitHub repository ${repository}`}><span class="record">{repository}</span> <span aria-hidden="true">↗</span></a>}
-  </div>}
+  <div class="project-body" data-reveal="detail">
+    <p>{project.summary}</p>
+    {(project.status || href) && <div class="project-links">
+      {project.status && <span class="project-status">{project.status}</span>}
+      {href && <a class="action-link" href={href} aria-label={`GitHub repository ${repository}`}><span class="record">{repository}</span> <span class="link-arrow" aria-hidden="true">↗</span></a>}
+    </div>}
+  </div>
 </article>

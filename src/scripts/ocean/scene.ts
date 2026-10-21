@@ -1,7 +1,7 @@
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
 import { createEnvironment } from './environment';
 import { createSharedUniforms, toVec3 } from './glsl';
-import type { OceanFrame, Palette } from './timeline';
+import { smoothstep, type OceanFrame, type Palette } from './timeline';
 import { createWater } from './water';
 
 export function createOceanScene(host: HTMLElement, palette: Palette, onContextLost: () => void) {
@@ -19,6 +19,9 @@ export function createOceanScene(host: HTMLElement, palette: Palette, onContextL
   camera.add(water.waterline);
 
   const lookAt = new Vector3();
+  let lastY = Number.NaN;
+  let lastTime = 0;
+  let fall = 0;
   const onLost = (event: Event) => { event.preventDefault(); onContextLost(); };
   renderer.domElement.addEventListener('webglcontextlost', onLost);
   let shaderError = '';
@@ -35,8 +38,8 @@ export function createOceanScene(host: HTMLElement, palette: Palette, onContextL
     const ratio = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.5);
     renderer.setPixelRatio(ratio);
     renderer.setSize(width, height, false);
-    environment.setPixelRatio(ratio);
     camera.aspect = width / Math.max(1, height);
+    environment.setView(ratio, camera.aspect < 0.8);
     // Keep the horizontal field of view usable on portrait screens.
     camera.fov = camera.aspect < 0.8 ? 62 : 50;
     camera.updateProjectionMatrix();
@@ -67,7 +70,18 @@ export function createOceanScene(host: HTMLElement, palette: Palette, onContextL
     dispose,
     /** Camera follows scroll (frame); waves, rays and particles follow time. */
     draw(frame: OceanFrame, time: number) {
-      camera.position.set(...frame.position);
+      const [x, y, z] = frame.position;
+      // Sinking speed for the motes' motion smear; a paused or snapped frame has none.
+      const dt = time - lastTime;
+      const speed = dt > 0 && dt < 0.25 && Number.isFinite(lastY) ? Math.max(-12, Math.min(12, (lastY - y) / dt)) : 0;
+      fall += (speed - fall) * (dt > 0 ? 1 - Math.exp(-dt * 10) : 1);
+      lastY = y;
+      lastTime = time;
+      // A slight sideways drift and roll once clear of the surface: the camera
+      // floats in the water instead of sliding on a rail.
+      const drift = smoothstep(0.5, 4, -y);
+      camera.position.set(x + Math.sin(time * 0.29) * 0.12 * drift, y, z);
+      camera.up.set(Math.sin(time * 0.21) * 0.01 * drift, 1, 0);
       lookAt.set(...frame.target);
       camera.lookAt(lookAt);
       shared.uTime.value = time;
@@ -77,7 +91,7 @@ export function createOceanScene(host: HTMLElement, palette: Palette, onContextL
       shared.uFogGradient.value = frame.fogGradient;
       toVec3(frame.fogColor, shared.uFogColor.value);
       water.update(frame);
-      environment.update(frame, camera.position);
+      environment.update(frame, camera.position, fall);
       renderer.render(scene, camera);
       assertShaders();
     },
