@@ -20,6 +20,15 @@ describe('T02: verified project content', () => {
       'AI Agents & Orchestration', 'Reliability & Verification', 'Context & Memory', 'Efficient Intelligence',
     ]);
   });
+  it('K07: every translated field has Korean text; titles and names stay in English', () => {
+    const hangul = /\p{Script=Hangul}/u;
+    for (const text of [...projects.map((project) => project.summaryKo), ...research.map((area) => area.descriptionKo)]) {
+      expect(text).toMatch(hangul);
+    }
+    for (const text of [...projects.flatMap((project) => [project.name, project.category, project.summary]), ...research.flatMap((area) => [area.title, area.description])]) {
+      expect(text).not.toMatch(hangul);
+    }
+  });
   it.each([null, '', 'javascript:alert(1)', 'https://user:password@example.com', '#', '/unknown', 'http://example.com'])('omits an unsafe or unverified link: %s', (value) => {
     expect(verifiedLink(value)).toBeNull();
   });

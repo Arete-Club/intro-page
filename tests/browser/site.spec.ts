@@ -40,8 +40,26 @@ test('T01/T02/T09: static content, honest links and metadata without JavaScript'
     await expect(page.getByText(text, { exact: true })).toBeVisible();
   }
   await expect(page.locator('.about-copy')).toContainText('We approach AI with the same curiosity:');
-  // Include metadata and accessible names, not just visible body text.
-  expect(await page.content()).not.toMatch(/\p{Script=Hangul}/u);
+  // Korean ships in the HTML for the language switch (K07), but in English it stays out of
+  // visible text, accessible names and metadata; without JavaScript there is no switch.
+  const korean = await page.evaluate(() => {
+    const hangul = /\p{Script=Hangul}/u;
+    const issues: string[] = [];
+    const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (hangul.test(node.textContent!) && !node.parentElement!.closest('[data-lang="ko"]')) issues.push(`text: ${node.textContent!.trim()}`);
+    }
+    for (const element of document.querySelectorAll('*')) {
+      for (const attribute of element.attributes) {
+        if (hangul.test(attribute.value) && !['data-label-ko', 'data-title-ko'].includes(attribute.name)) issues.push(`${attribute.name}: ${attribute.value}`);
+      }
+    }
+    if (hangul.test(document.body.innerText)) issues.push('visible text');
+    return issues;
+  });
+  expect(korean).toEqual([]);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('.lang-toggle')).toBeHidden();
   await expect(page.locator('main > section, .deep-content > section, .deep-content > footer')).toHaveCount(6);
   await expect(page.locator('.research-row')).toHaveCount(4);
   await expect(page.locator('.project-card')).toHaveCount(3);
@@ -142,7 +160,7 @@ test('T06: keyboard access, semantic headings and anchor navigation', async ({ p
   await ready(page);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
-  await expect(page.locator('.skip-link')).toHaveText('Skip to content');
+  await expect(page.locator('.skip-link')).toHaveText('Skip to content', { useInnerText: true });
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('.ocean-canvas')).toHaveAttribute('aria-hidden', 'true');
   await page.keyboard.press('Tab');
@@ -525,6 +543,211 @@ for (const [width, height] of [[1440, 900], [375, 812]]) {
       }, shot.toString('base64'));
       expect(ratio, selector).toBeGreaterThanOrEqual(4.5);
     }
+  });
+}
+
+for (const [width, height] of [[360, 780], [375, 812], [390, 844], [1440, 900]]) {
+  test(`T14: the header with the language toggle stays on one line at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await ready(page);
+    const layout = await page.evaluate(() => {
+      const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const inner = box('.site-header-inner');
+      const wordmark = box('.site-header .wordmark');
+      const end = box('.header-end');
+      const items = [...document.querySelectorAll('.site-header-inner a, .lang-toggle button')].map((el) => el.getBoundingClientRect());
+      const middles = items.map((rect) => rect.top + rect.height / 2);
+      const [en, ko] = [...document.querySelectorAll('.lang-toggle button')].map((el) => el.getBoundingClientRect());
+      return {
+        spread: Math.max(...middles) - Math.min(...middles),
+        gap: end.left - wordmark.right,
+        overRight: end.right - inner.right,
+        pageOverflow: document.documentElement.scrollWidth > innerWidth,
+        centers: (ko.left + ko.width / 2) - (en.left + en.width / 2),
+        heights: [en.height, ko.height],
+      };
+    });
+    expect(layout.spread).toBeLessThanOrEqual(2);
+    expect(layout.gap).toBeGreaterThanOrEqual(6);
+    expect(layout.overRight).toBeLessThanOrEqual(0);
+    expect(layout.pageOverflow).toBe(false);
+    // WCAG 2.5.8: 24px targets, or centers at least 24px apart.
+    expect(layout.centers).toBeGreaterThanOrEqual(24);
+    for (const value of layout.heights) expect(value).toBeGreaterThanOrEqual(24);
+  });
+}
+
+test('T14: the language toggle is reachable, labelled and keeps the address', async ({ page }) => {
+  await ready(page);
+  const group = page.getByRole('group', { name: 'Language' });
+  const english = group.getByRole('button', { name: 'English' });
+  const korean = group.getByRole('button', { name: 'Korean' });
+  await expect(english).toHaveText('EN');
+  await expect(korean).toHaveText('KO');
+  await expect(english).toHaveAttribute('aria-pressed', 'true');
+  await expect(korean).toHaveAttribute('aria-pressed', 'false');
+  await expect(english).toHaveCSS('text-decoration-line', 'underline');
+  await expect(korean).toHaveCSS('text-decoration-line', 'none');
+  await page.locator('.site-header nav a').last().focus();
+  await page.keyboard.press('Tab');
+  await expect(english).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(korean).toBeFocused();
+  const url = page.url();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
+  // The group is now named in Korean (K09), so find the button by its switch.
+  const switched = page.locator('[data-switch="ko"]');
+  await expect(switched).toHaveAttribute('aria-pressed', 'true');
+  await expect(switched).toBeFocused();
+  await expect(page.locator('h1')).toHaveText('Beyond the Surface.');
+  expect(page.url()).toBe(url);
+});
+
+test('T14: the toggle uses the header ink in every header state', async ({ page }) => {
+  await ready(page);
+  const header = page.locator('.site-header');
+  const sameInk = async () => {
+    const [ink, ...toggle] = await page.evaluate(() => [
+      getComputedStyle(document.querySelector('.site-header')!).color,
+      ...[...document.querySelectorAll<HTMLElement>('.lang-toggle button, .lang-toggle span')].map((el) => `${getComputedStyle(el).color} ${getComputedStyle(el).opacity}`),
+    ]);
+    for (const value of toggle) expect(value).toBe(`${ink} 1`);
+  };
+  await expect(header).toHaveAttribute('data-state', 'surface');
+  await sameInk();
+  await scrollOcean(page, 0.92);
+  await expect(header).toHaveAttribute('data-state', 'scene');
+  await expect(header).toHaveCSS('color', OFF_WHITE);
+  await sameInk();
+  await page.getByRole('navigation').getByRole('link', { name: 'Projects' }).click();
+  await expect(header).toHaveAttribute('data-state', 'solid');
+  await expect(header).toHaveCSS('color', OFF_WHITE);
+  await sameInk();
+});
+
+const KO_TITLE = 'Arete Club — 독립 AI 연구·개발';
+// Brand titles and index stay in English in both languages (K06).
+const keptEnglish = (page: Page) => page.evaluate(() => [...document.querySelectorAll<HTMLElement>(
+  'h1, .scene-eyebrow, .statement-lead, h2, h3, .section-label, nav a, .project-category, .values, .footer-top p, .small-label:not(.research-caption), .record',
+)].map((el) => el.innerText));
+
+async function shownTranslations(page: Page) {
+  return page.evaluate(() => {
+    const hangul = /\p{Script=Hangul}/u;
+    const shown = [...document.querySelectorAll<HTMLElement>('[data-lang]')].filter((el) => el.checkVisibility());
+    return {
+      en: shown.filter((el) => el.dataset.lang === 'en' && !hangul.test(el.textContent!)).length,
+      ko: shown.filter((el) => el.dataset.lang === 'ko' && el.lang === 'ko' && hangul.test(el.textContent!)).length,
+      total: shown.length,
+      pairs: [document.querySelectorAll('[data-lang="en"]').length, document.querySelectorAll('[data-lang="ko"]').length],
+    };
+  });
+}
+
+test('T15: KO shows the details in Korean, EN brings English back, titles stay English', async ({ page }) => {
+  await ready(page);
+  const html = page.locator('html');
+  const [english, korean] = [page.locator('[data-switch="en"]'), page.locator('[data-switch="ko"]')];
+  const titles = await keptEnglish(page);
+  const start = await shownTranslations(page);
+  expect(start.pairs[0]).toBe(start.pairs[1]);
+  expect(start.en).toBe(start.total);
+
+  await korean.click();
+  await expect(html).toHaveAttribute('lang', 'ko');
+  await expect(korean).toHaveAttribute('aria-pressed', 'true');
+  await expect(english).toHaveAttribute('aria-pressed', 'false');
+  await expect(page).toHaveTitle(KO_TITLE);
+  const shown = await shownTranslations(page);
+  expect(shown.total).toBe(start.total);
+  expect(shown.ko).toBe(shown.total);
+  expect(await keptEnglish(page)).toEqual(titles);
+  await expect(page.locator(`${copy('hero')} .story-description`)).toHaveText(/AI는 새로운 발견과 발명으로 자라납니다\./, { useInnerText: true });
+  await expect(page.getByRole('navigation', { name: '주 메뉴' })).toBeVisible();
+  await expect(page.getByRole('group', { name: '언어' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Arete Club — 맨 위로' })).toBeVisible();
+  await expect(page.locator('[data-project="SkillFetch"] a')).toHaveAttribute('aria-label', 'GitHub 저장소 Arete-Club/SkillFetch');
+  await expect(page.locator('#contact')).toHaveAttribute('aria-label', '연락처');
+  await expect(page.getByRole('link', { name: '수면으로 돌아가기' })).toHaveCount(1);
+  // The toggle keeps English names that match what it shows (K09).
+  await expect(page.getByRole('button', { name: 'Korean' })).toHaveText('KO');
+
+  await english.click();
+  await expect(html).toHaveAttribute('lang', 'en');
+  await expect(english).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveTitle('Arete Club — Independent AI Research & Development');
+  expect((await shownTranslations(page)).en).toBe(start.total);
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+  await expect(page.locator('[data-project="SkillFetch"] a')).toHaveAttribute('aria-label', 'GitHub repository Arete-Club/SkillFetch');
+  expect(await keptEnglish(page)).toEqual(titles);
+});
+
+test('T15: switching keeps the ocean where it was and the reader in place', async ({ page }) => {
+  await ready(page);
+  await scrollOcean(page, 0.58);
+  await page.locator('[data-switch="ko"]').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
+  await expect(page.locator('.ocean')).toHaveAttribute('data-progress', '0.58');
+  await expect(page.locator(copy('descent'))).toHaveCSS('opacity', '1');
+  await expect(page.locator('canvas')).toHaveCount(1);
+  await page.locator('[data-switch="en"]').click();
+
+  // Chromium keeps the position by itself (native scroll anchoring); turn that off to stand in
+  // for browsers without it, so the switch's own correction is what is tested.
+  await page.addStyleTag({ content: 'html { overflow-anchor: none !important; }' });
+  // Body text above the Projects heading changes height between languages…
+  const offset = () => page.evaluate(() => document.querySelector<HTMLElement>('#projects')!.offsetTop);
+  // The section label has no entry animation, so its box moves only with the page.
+  const target = page.locator('#projects .section-label');
+  await target.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 160));
+  const before = (await target.boundingBox())!.y;
+  const englishTop = await offset();
+  for (const language of ['ko', 'en'] as const) {
+    await page.locator(`[data-switch="${language}"]`).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', language);
+    // …yet what the reader was looking at stays where it was.
+    expect(Math.abs((await target.boundingBox())!.y - before), language).toBeLessThanOrEqual(2);
+    if (language === 'ko') expect(await offset()).not.toBe(englishTop);
+  }
+});
+
+test('T15: the page always starts in English and stores nothing', async ({ page }) => {
+  await ready(page);
+  await page.locator('[data-switch="ko"]').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('[data-switch="en"]')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => [localStorage.length, sessionStorage.length, document.cookie])).toEqual([0, 0, '']);
+});
+
+for (const [width, height] of [[375, 667], [390, 844], [1440, 900]]) {
+  test(`T15: Korean copy fits the scenes and the body at ${width}x${height}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await ready(page);
+    await page.locator('[data-switch="ko"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
+    for (const [progress, key] of [[0, 'hero'], [0.58, 'descent'], [0.92, 'abyss']] as const) {
+      await scrollOcean(page, progress);
+      await expect(page.locator(copy(key))).toHaveCSS('opacity', '1');
+      const fit = await page.locator(`${copy(key)} .story-description`).evaluate((element) => {
+        const header = document.querySelector('.site-header')!.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const boxes = Array.from(range.getClientRects());
+        return boxes.length > 0 && boxes.every((box) => box.left >= 0 && box.right <= innerWidth && box.top >= header.bottom && box.bottom <= innerHeight);
+      });
+      expect(fit, `${key} at ${progress}`).toBe(true);
+    }
+    await scrollOcean(page, 0);
+    // Navy hero copy stays on the sky, above the horizon (as T05).
+    expect(await page.locator('.hero-copy .wrap').evaluate((el) => el.getBoundingClientRect().bottom)).toBeLessThan(height * 0.55);
+    for (const selector of ['.about-copy [data-lang="ko"] p', '.research-heading p', '.research-row p', '.project-body p:not(.project-category)', '.exploration-body p']) {
+      expect(await page.locator(selector).first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize)), selector).toBeGreaterThanOrEqual(16);
+    }
+    await page.locator('#contact').scrollIntoViewIfNeeded();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   });
 }
 

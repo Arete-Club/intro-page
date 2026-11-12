@@ -2,13 +2,30 @@
 
 ## 완료된 것
 
+### 2026-11-12 — 한국어 전환 로직 (K06–K12)
+
+- 사용자 결정: 큰 제목·인덱스는 영어, 세부 콘텐츠는 한국어(Claude 분류안 승인). 방식 B는 같은 페이지 교체다. 추천안이던 A `/ko/` 별도 페이지는 전환할 때 3D 장면과 보던 위치를 잃어서 UI/UX 우선으로 채택하지 않았다. 선택은 저장하지 않고 항상 영어로 시작한다(기억하기 안·브라우저 언어 따르기 안은 채택 안 함). 한국어 문구는 Claude 초안이고 사용자가 이후 직접 수정한다. 스펙은 `docs/SPEC.md` 상단 K06–K12.
+- 구현(`feat/lang-toggle`): 두 언어를 HTML에 나란히 두고(`data-lang="en"` / `data-lang="ko" lang="ko"`), `:root[lang]`에 따라 CSS가 한쪽만 표시. 데이터 문구는 `content.ts`의 `summaryKo`·`descriptionKo`. aria-label은 `data-label-ko`, 탭 제목은 `<title data-title-ko>`. `src/scripts/language.ts`가 `<html lang>`·aria-pressed·aria-label·제목을 바꾸고, 헤더 바로 아래 요소 기준으로 스크롤을 보정함(그동안은 `overflow-anchor: none`로 브라우저 보정과 겹치지 않게 함). 영어 유지 항목에는 `lang="en"`. JS가 없으면 토글을 숨김. `.back-top span` 규칙은 `.back-top-arrow`로 좁힘(번역 span에 걸리지 않게).
+- 한국어 문구 위치(사용자 수정용): 장면 설명·스크롤 안내는 `OceanExperience.astro`, 본문·건너뛰기 링크·CTA·푸터·aria-label·탭 제목은 `index.astro`, 연구 설명·프로젝트 설명은 `content.ts`, 저장소 링크 이름은 `ProjectCard.astro`.
+- 테스트: T01은 "한글 없음"에서 "JS 없으면 보이는 글자·접근성 이름에 한글 없음, 한글은 `data-lang=ko`와 `data-label-ko`·`data-title-ko`에만"으로 바꿈. T06 건너뛰기 링크는 innerText로 비교. T14 토글 테스트는 동작 확인으로 바꿈. T15 7개 추가: 전환·복귀, 짝 일치, 영어 유지, 장면 진행·보던 위치, 항상 영어 시작, 375×667·390×844·1440×900 배치. 위치 테스트는 Chromium 자체 보정이 결과를 가려서 `overflow-anchor: none`을 주입해 검사함. 보정 코드를 빼면 32px 밀려 실패하는 것 확인. 단위 검사 1개 추가(한국어 필드).
+- 검증(Node 22.23.4): check 0/0/0, lint, 단위 36개, build, e2e 53개, 시각 1개 통과. 한국어 캡처로 1440·375px의 장면·본문을 육안 확인했고 scratchpad에 둠(저장소 밖).
+- 남은 것: ① 375px 하강 장면 설명 첫 줄 끝 "있습니다."가 혼자 다음 줄로 떨어짐. 문구 다듬을 때 후보. ② 검색·공유 미리보기는 영어(K11, 수용됨). ③ Safari의 브라우저 자체 스크롤 보정 지원 여부는 확인 필요. 이번 보정 코드가 그 경우를 대비함. ④ Safari·실기기 미확인. 2026-11-12 사용자 요청으로 커밋하고 `origin/feat/lang-toggle`에 push(이 브랜치에 Astro 업데이트·고정 헤더 커밋도 포함).
+
+### 2026-11-12 — 한/영 토글 UI (K01–K05, 로직 없음)
+
+- 사용자 요청: 내비게이션바에 한/영 토글 추가, 로직은 아직 안 함. E03(언어 선택기 미추가) 결정을 대체. 스펙은 `docs/SPEC.md` 상단 K01–K05.
+- 사용자 결정: 모든 화면에서 `EN / KO`(추천했던 "모바일은 KO만"은 채택 안 함). 표시는 라틴 `KO`(`한국어`는 E02·T01 한글 금지와 충돌해 채택 안 함). 모바일은 처음에 워드마크 19px·간격 10px로 합의했으나 실측해 보니 360px에서 오른쪽 여백을 10px 넘음. 그래서 워드마크 17px·간격 8px로 바꿈. 다른 후보였던 Contact 숨김, 여백 16px, 글자 10px은 채택 안 함.
+- 구현(브랜치 `feat/lang-toggle`, `feat/fixed-header`에서 분기): `index.astro` 헤더에 `.header-end`(내비+토글) 추가. `role=group` "Language" 안에 버튼 English/Korean, EN `aria-pressed=true`·밑줄. 클릭 동작은 없음. 글자색은 헤더 상태를 그대로 따름.
+- 검증(Node 22.23.4): check 0/0/0, lint, 단위 35개, build, e2e 47개(T14 6개 추가), 시각 1개 통과. 1차 e2e에서 T10(수면 통과 WebGL 픽셀) 1회 실패, 단독 3회·전체 재실행에서 통과. 헤더는 캔버스 픽셀에 영향을 줄 수 없음. 실패 기록은 재실행으로 덮어써져 원인 미확인 → 간헐 실패 후보로 관찰 필요.
+- 실측 워드마크–내비 사이: 360px 7px, 375px 22px, 390px 이상 여유. 320px은 기존부터 내비가 오른쪽 여백을 침범했고 지금도 그럼(범위 밖). K06–K12와 함께 한 커밋으로 push.
+
 ### 2026-11-11 — 고정 헤더 (N01–N05)
 
 - 사용자 요청: 본문으로 내려가면 내비가 사라진다. 원인: 헤더가 sticky인 `.ocean-stage` 안에 있어서 바다 구간(440svh)이 끝나면 함께 밀려 올라감. 정적 화면에서는 첫 스크롤에 바로 사라짐.
 - 사용자 결정: ① 본문 배경 B 반투명+블러(추천 A 불투명 남색은 채택 안 함) ② 정적 화면 B 패널 색 따라 전환(추천 A 처음부터 남색 띠는 채택 안 함). 스펙은 `docs/SPEC.md` 상단 N01–N05.
 - 구현(브랜치 `feat/fixed-header`): 헤더를 `index.astro` 최상위로 옮겨 `position: fixed`로 고정(배경은 전체 폭, 구분선은 `.wrap` 폭). 높이는 `--header-h` 91/72px. `src/scripts/header.ts`가 `data-state`(surface/scene/solid)를 정함. 바다 시퀀스에서는 고정 장면, 정적 화면에서는 히어로 패널이 헤더 아래를 벗어나면 solid(남색 72% + 블러 16px). JS가 없으면 처음부터 solid. 정적 장면 위 여백 `padding-top: var(--header-h)`로 배치 유지. `html { scroll-padding-top }`로 앵커·포커스 가림 방지.
 - 검증(Node 22.23.4): check 0/0/0, lint 통과, 단위 35개(헤더 상태 3개 추가), build 성공(기존 500KB 경고 유지), e2e 41개(T13 7개 추가), 시각 1개 통과. scroll-padding을 빼면 T13 포커스 테스트가 실패하는 것 확인(29.5px, 헤더 밑에 가려짐). V01 캡처로 수면·심해·본문·정적 전체 화면 육안 확인.
-- 남은 한계: ① `backdrop-filter` 미지원 대체(94% 불투명)는 Chromium에서 재현할 수 없어 미검증. ② Safari·iOS 실기기 미확인. ③ JS가 켜진 상태에서 본문 위치로 복원 로드하면 스크립트 실행 전 한순간 헤더가 투명할 수 있음(바다 모듈과 같은 계약). 커밋·push 안 함.
+- 남은 한계: ① `backdrop-filter` 미지원 대체(94% 불투명)는 Chromium에서 재현할 수 없어 미검증. ② Safari·iOS 실기기 미확인. ③ JS가 켜진 상태에서 본문 위치로 복원 로드하면 스크립트 실행 전 한순간 헤더가 투명할 수 있음(바다 모듈과 같은 계약). 2026-11-11 커밋 d80ee4f, 2026-11-12 `feat/lang-toggle`과 함께 push.
 
 ### 2026-11-11 — Astro 7.4.10 업데이트 대응 (Node 22.23.4)
 
@@ -214,7 +231,8 @@
 - `artifacts/preview/` 루트의 캡처·프로파일은 2026-10-15 구 히어로 기준임. 최신 영어 캡처는 `english-2026-10-19/`, 이전 한국어 카피·수중 연출 캡처는 `story-typography-2026-10-19/` 및 `ocean-depth-2026-10-19/`에 있음. 전체 최신 테스트 산출물은 `test-results/`에 있음.
 - 2026-10-19 사용자 제공 공개 사이트 https://www.areteclub.org/ 확인. 이번 카피·타이포그래피·수중 연출·영어 통일 변경은 로컬 작업본이며 공개 사이트에 배포하지 않음. 현재 호스팅·배포 연결은 미확인.
 - 빌드 제한: Three.js 장면 지연 로딩 청크 537,613 bytes / 로컬 gzip 133,347 bytes. 500KB 청크 경고는 남아 있음. 초기 HTML·본문은 이 청크 로딩과 독립적임.
-- 2026-11-11 고정 헤더(N01–N05) 구현·검증 완료, 사용자 실제 스크롤 검토 대기. 로컬 미커밋(`feat/fixed-header`, 이전 브랜치의 미커밋 Astro 업데이트 변경도 함께 있음).
+- 2026-11-12 작업 동결(freeze): `feat/lang-toggle`에 Astro 업데이트(f244966)·고정 헤더(d80ee4f)·한/영 토글과 한국어 전환(K01–K12)을 커밋하고 origin에 push. 로컬 `feat/fixed-header` 브랜치는 따로 push하지 않음(같은 커밋이 `feat/lang-toggle`에 포함). PR·병합은 안 함.
+- 사용자 대기: 고정 헤더 실제 스크롤 검토, 한국어 문구 직접 수정(HTML·content.ts). 문구 확정 전 공개 배포 보류.
 - 개발 도구 제한: 2026-11-11부터 Astro 7.4.10 때문에 Node 22.23.4 이상 필요(시스템 `/usr/local/bin/node`는 22.21.0이라 그대로 쓰면 실패). ESLint 9.39.5 + eslint-plugin-astro 1.3.1은 Node 22.21.0 기준으로 고른 버전. 최신 플러그인은 Node 22.22.3 이상을 요구함. 온라인 npm audit는 braces → micromatch → fast-glob → astro-eslint-parser 체인 high 4건을 보고했고 `npm audit fix`는 해소하지 못함. 오프라인 lockfile 갱신 때 표시된 0건은 온라인 재검증 근거로 사용하지 않음.
 
 ## 다음 단계
