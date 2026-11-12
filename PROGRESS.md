@@ -2,6 +2,23 @@
 
 ## 완료된 것
 
+### 2026-11-11 — 고정 헤더 (N01–N05)
+
+- 사용자 요청: 본문으로 내려가면 내비가 사라진다. 원인: 헤더가 sticky인 `.ocean-stage` 안에 있어서 바다 구간(440svh)이 끝나면 함께 밀려 올라감. 정적 화면에서는 첫 스크롤에 바로 사라짐.
+- 사용자 결정: ① 본문 배경 B 반투명+블러(추천 A 불투명 남색은 채택 안 함) ② 정적 화면 B 패널 색 따라 전환(추천 A 처음부터 남색 띠는 채택 안 함). 스펙은 `docs/SPEC.md` 상단 N01–N05.
+- 구현(브랜치 `feat/fixed-header`): 헤더를 `index.astro` 최상위로 옮겨 `position: fixed`로 고정(배경은 전체 폭, 구분선은 `.wrap` 폭). 높이는 `--header-h` 91/72px. `src/scripts/header.ts`가 `data-state`(surface/scene/solid)를 정함. 바다 시퀀스에서는 고정 장면, 정적 화면에서는 히어로 패널이 헤더 아래를 벗어나면 solid(남색 72% + 블러 16px). JS가 없으면 처음부터 solid. 정적 장면 위 여백 `padding-top: var(--header-h)`로 배치 유지. `html { scroll-padding-top }`로 앵커·포커스 가림 방지.
+- 검증(Node 22.23.4): check 0/0/0, lint 통과, 단위 35개(헤더 상태 3개 추가), build 성공(기존 500KB 경고 유지), e2e 41개(T13 7개 추가), 시각 1개 통과. scroll-padding을 빼면 T13 포커스 테스트가 실패하는 것 확인(29.5px, 헤더 밑에 가려짐). V01 캡처로 수면·심해·본문·정적 전체 화면 육안 확인.
+- 남은 한계: ① `backdrop-filter` 미지원 대체(94% 불투명)는 Chromium에서 재현할 수 없어 미검증. ② Safari·iOS 실기기 미확인. ③ JS가 켜진 상태에서 본문 위치로 복원 로드하면 스크립트 실행 전 한순간 헤더가 투명할 수 있음(바다 모듈과 같은 계약). 커밋·push 안 함.
+
+### 2026-11-11 — Astro 7.4.10 업데이트 대응 (Node 22.23.4)
+
+- 사용자가 Astro를 `^7.4.10`, `@astrojs/check`를 `^0.9.12`로 올린 뒤 `npm run dev`가 "Node.js v22.21.0 is not supported" 오류로 실패. 원인: Astro 7.4.0–7.4.1은 Node 22.22.0 이상, 7.4.2부터 22.23.4 이상을 요구함(npm 레지스트리 engines). Node 22.21.0에서 쓸 수 있는 건 7.3.x까지.
+- 사용자 결정: B안(Node 올리기). 채택하지 않은 A안은 업데이트 되돌리기(`package*.json` HEAD 복원 + `npm ci`). 위험은 없지만 이후 Astro 업데이트가 계속 막혀서 제외.
+- 조치: nvm으로 Node v22.23.4(Latest LTS Jod) 설치. 다른 의존성처럼 정확한 버전으로 고정(`astro` 7.4.10, `@astrojs/check` 0.9.12)하고 새 Node로 `npm install`. lock에 추가·제거된 항목은 전부 astro 7.4.10의 의존성 변경(@astrojs/runtime, vite-plugin-astro, tinyps, mri, fnv1a-64 등)이고, `npm ls --all` 정상.
+- `~/.npmrc`의 `prefix` 설정이 nvm과 충돌해 `nvm use`가 거부됨(exit 11). nvm이 제안한 `--delete-prefix`는 전역 패키지 위치를 바꿀 수 있어서 적용하지 않음. 검증은 `PATH="$HOME/.nvm/versions/node/v22.23.4/bin:$PATH"`로 실행.
+- 검증(Node 22.23.4): check 0/0/0, lint 통과, 단위 32개, build 성공(장면 청크 537,613→542,123 bytes, 기존 500KB 경고 유지), e2e 34개(1.8분), 시각 1개 통과. `npm run dev`는 HTTP 200 응답 확인 후 종료. Astro 7.4 dev 서버는 백그라운드 데몬으로 뜸(`astro dev stop`/`status`).
+- `package.json`의 `engines.node`(>=22.12.0)는 아직 그대로라 실제 요구 조건(>=22.23.4)과 다름. 수정 여부는 사용자 결정 대기. 커밋·push 안 함.
+
 ### 2026-10-21 — 하강 깊이감 보강 (수중·심해 배경)
 
 - 사용자 피드백: "밋밋하고 해저로 내려가는 느낌이 없다, 색만 짙어진다." 별도 SDD 없이 구현을 위임받음. 브랜치 `feat/ocean-descent-depth`(R01–R08 미커밋 변경 포함 상태에서 분기). 변경 파일: `src/scripts/ocean/{environment,scene,timeline}.ts`, `tests/unit/timeline.test.ts`, `docs/motion.md` 개정 메모.
@@ -197,7 +214,8 @@
 - `artifacts/preview/` 루트의 캡처·프로파일은 2026-10-15 구 히어로 기준임. 최신 영어 캡처는 `english-2026-10-19/`, 이전 한국어 카피·수중 연출 캡처는 `story-typography-2026-10-19/` 및 `ocean-depth-2026-10-19/`에 있음. 전체 최신 테스트 산출물은 `test-results/`에 있음.
 - 2026-10-19 사용자 제공 공개 사이트 https://www.areteclub.org/ 확인. 이번 카피·타이포그래피·수중 연출·영어 통일 변경은 로컬 작업본이며 공개 사이트에 배포하지 않음. 현재 호스팅·배포 연결은 미확인.
 - 빌드 제한: Three.js 장면 지연 로딩 청크 537,613 bytes / 로컬 gzip 133,347 bytes. 500KB 청크 경고는 남아 있음. 초기 HTML·본문은 이 청크 로딩과 독립적임.
-- 개발 도구 제한: Node 22.21.0에 맞춰 ESLint 9.39.5 + eslint-plugin-astro 1.3.1 사용. 최신 플러그인은 Node 22.22.3 이상을 요구함. 온라인 npm audit는 braces → micromatch → fast-glob → astro-eslint-parser 체인 high 4건을 보고했고 `npm audit fix`는 해소하지 못함. 오프라인 lockfile 갱신 때 표시된 0건은 온라인 재검증 근거로 사용하지 않음.
+- 2026-11-11 고정 헤더(N01–N05) 구현·검증 완료, 사용자 실제 스크롤 검토 대기. 로컬 미커밋(`feat/fixed-header`, 이전 브랜치의 미커밋 Astro 업데이트 변경도 함께 있음).
+- 개발 도구 제한: 2026-11-11부터 Astro 7.4.10 때문에 Node 22.23.4 이상 필요(시스템 `/usr/local/bin/node`는 22.21.0이라 그대로 쓰면 실패). ESLint 9.39.5 + eslint-plugin-astro 1.3.1은 Node 22.21.0 기준으로 고른 버전. 최신 플러그인은 Node 22.22.3 이상을 요구함. 온라인 npm audit는 braces → micromatch → fast-glob → astro-eslint-parser 체인 high 4건을 보고했고 `npm audit fix`는 해소하지 못함. 오프라인 lockfile 갱신 때 표시된 0건은 온라인 재검증 근거로 사용하지 않음.
 
 ## 다음 단계
 
@@ -208,7 +226,7 @@
 - HANDOFF.md는 본문 장식 정리 이전 상태다. 다음 인계 시 다시 export.
 - 빛의 하강 결과 사용자 시각 검토(실제 스크롤로 확인 권장). 남은 한계 3건을 다룰지 결정.
 - 실기기(iOS Safari 등)에서 수면 통과·수중 장면 성능과 대비 확인 — 아직 안 함.
-- 비평에서 범위 밖으로 둔 후속 후보: 서체 확정(typeset), 본문 내비 고정, PRD 슬로건 노출, 히어로 eyebrow(impeccable craft-floor는 금지 — C01 승인 사항이라 재논의 필요).
+- 비평에서 범위 밖으로 둔 후속 후보: 서체 확정(typeset), PRD 슬로건 노출, 히어로 eyebrow(impeccable craft-floor는 금지 — C01 승인 사항이라 재논의 필요).
 - 로컬 실행: `npm run dev`. 의존성 재설치는 `npm ci`. 실행·검증 상세는 `README.md` 참조.
 - 저장소가 비어 있었으므로 GitHub 기본 브랜치는 `develop`이 됨. main을 만들고 기본 브랜치·보호 규칙을 정할지는 사용자 결정 사항.
 - 사용자 시각 검수: 수면 통과 속도(구간 0.25–0.35), 시퀀스 길이(데스크톱 520svh·모바일 440svh), 확산광·입자 밀도.

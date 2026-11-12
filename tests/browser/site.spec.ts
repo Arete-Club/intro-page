@@ -387,6 +387,147 @@ for (const [width, height] of [[1440, 900], [375, 812]]) {
   });
 }
 
+const OFF_WHITE = 'rgb(241, 244, 242)';
+const NAVY = 'rgb(6, 21, 33)';
+
+async function expectPinnedHeader(page: Page) {
+  expect((await page.locator('.site-header').boundingBox())!.y).toBe(0);
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeInViewport();
+}
+
+async function belowHeader(page: Page, selector: string) {
+  const [header, box] = await Promise.all([page.locator('.site-header').boundingBox(), page.locator(selector).boundingBox()]);
+  expect(box!.y, selector).toBeGreaterThanOrEqual(header!.y + header!.height);
+}
+
+test('T13: the header stays at the top through the ocean sequence and the body', async ({ page }) => {
+  await ready(page);
+  const header = page.locator('.site-header');
+  await expect(header).toHaveAttribute('data-state', 'surface');
+  await expect(header).toHaveCSS('color', NAVY);
+  await expect(header).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(header).toHaveCSS('backdrop-filter', 'none');
+  await scrollOcean(page, 0.92);
+  await expect(header).toHaveAttribute('data-state', 'scene');
+  await expect(header).toHaveCSS('color', OFF_WHITE);
+  await expect(header).toHaveCSS('backdrop-filter', 'none');
+  await expectPinnedHeader(page);
+  await page.getByRole('navigation').getByRole('link', { name: 'Projects' }).click();
+  await expect(page).toHaveURL(/#projects$/);
+  await expect(header).toHaveAttribute('data-state', 'solid');
+  await expect(header).toHaveCSS('color', OFF_WHITE);
+  await expect(header).toHaveCSS('background-color', /0\.72\)$/);
+  await expect(header).toHaveCSS('backdrop-filter', 'blur(16px)');
+  await expectPinnedHeader(page);
+  await belowHeader(page, '#projects .section-label');
+  await page.getByRole('link', { name: 'Back to surface' }).click();
+  await expect(header).toHaveAttribute('data-state', 'surface');
+});
+
+for (const mode of ['reduced motion', 'no WebGL'] as const) {
+  test(`T13: ${mode} — clear over the sky-blue hero, a navy bar from the navy panels`, async ({ page }) => {
+    if (mode === 'reduced motion') await page.emulateMedia({ reducedMotion: 'reduce' });
+    else await page.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args: Parameters<typeof original>) {
+        return String(args[0]).includes('webgl') ? null : original.apply(this, args);
+      } as typeof original;
+    });
+    await page.goto('/');
+    await expect(page.locator('.ocean')).toHaveAttribute('data-scene', mode === 'reduced motion' ? 'static' : 'fallback');
+    const header = page.locator('.site-header');
+    await expect(header).toHaveAttribute('data-state', 'surface');
+    await expect(header).toHaveCSS('color', NAVY);
+    // The panels keep their place under the fixed header.
+    expect((await page.locator('.hero-copy').boundingBox())!.y).toBeCloseTo(91, 0);
+    await page.locator('.descent-copy').evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 40));
+    await expect(header).toHaveAttribute('data-state', 'solid');
+    await expect(header).toHaveCSS('color', OFF_WHITE);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(header).toHaveAttribute('data-state', 'solid');
+    await expectPinnedHeader(page);
+    await page.getByRole('navigation').getByRole('link', { name: 'Research' }).click();
+    await belowHeader(page, '#research .section-label');
+  });
+}
+
+test('T13: without JavaScript the header is a navy bar that stays at the top', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto('/');
+  const header = page.locator('.site-header');
+  await expect(header).not.toHaveAttribute('data-state');
+  await expect(header).toHaveCSS('color', OFF_WHITE);
+  await expect(header).toHaveCSS('backdrop-filter', 'blur(16px)');
+  await page.getByRole('navigation').getByRole('link', { name: 'Research' }).click();
+  await expectPinnedHeader(page);
+  await belowHeader(page, '#research .section-label');
+  await context.close();
+});
+
+test('T13: keyboard focus is not left under the header', async ({ page }) => {
+  await ready(page);
+  const target = page.locator('[data-project="Handoff"] a');
+  await page.locator('[data-project="SkillFetch"] a').evaluate((el: HTMLElement) => el.focus({ preventScroll: true }));
+  // Park the next link right behind the bar, then move focus to it from the keyboard.
+  await target.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 30));
+  await page.keyboard.press('Tab');
+  await expect(target).toBeFocused();
+  await belowHeader(page, '[data-project="Handoff"] a');
+});
+
+for (const [width, height] of [[1440, 900], [375, 812]]) {
+  test(`T13: header ink keeps 4.5:1 while body headings pass behind it at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await ready(page);
+    const header = page.locator('.site-header');
+    for (const selector of ['#about h2', '#research h2', '.research-row h3', '#projects h2', '.project-heading h3', '#exploration h2']) {
+      const heading = page.locator(selector).first();
+      // Put a bright heading right behind the bar, then let reveals and the bar's fade settle.
+      await heading.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 16));
+      await expect(header).toHaveAttribute('data-state', 'solid');
+      await heading.evaluate(async (el) => {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const settling = [...el.closest('section')!.getAnimations({ subtree: true }), ...document.querySelector('.site-header')!.getAnimations()];
+        await Promise.all(settling.map((animation) => animation.finished.catch(() => {})));
+      });
+      const box = (await header.boundingBox())!;
+      const shot = await page.screenshot({ clip: { x: 0, y: 0, width: box.width, height: box.height }, scale: 'css' });
+      const ratio = await page.evaluate(async (png) => {
+        const bar = document.querySelector<HTMLElement>('.site-header')!;
+        const glyphs = [...bar.querySelectorAll('.wordmark, nav a')].map((el) => el.getBoundingClientRect());
+        const top = Math.min(...glyphs.map((rect) => rect.top));
+        const bottom = Math.max(...glyphs.map((rect) => rect.bottom));
+        const image = new Image();
+        image.src = `data:image/png;base64,${png}`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(image, 0, 0);
+        const { data, width: columns } = context.getImageData(0, 0, image.width, image.height);
+        const linear = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+        const luminance = (r: number, g: number, b: number) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+        // The bar's own pixels above and below the text line (no glyphs, no rule).
+        const values: number[] = [];
+        for (const [from, to] of [[2, top - 3], [bottom + 3, bar.offsetHeight - 3]]) {
+          for (let y = Math.ceil(from); y < to; y++) {
+            for (let x = 0; x < columns; x += 2) {
+              const i = (y * columns + x) * 4;
+              values.push(luminance(data[i], data[i + 1], data[i + 2]));
+            }
+          }
+        }
+        values.sort((a, b) => a - b);
+        const ink = getComputedStyle(bar).color.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+        return (luminance(ink[0], ink[1], ink[2]) + 0.05) / (values[Math.floor(values.length * 0.98)] + 0.05);
+      }, shot.toString('base64'));
+      expect(ratio, selector).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+}
+
 test('V01: desktop/mobile captures and browser rendering profile', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   const profiles = [];

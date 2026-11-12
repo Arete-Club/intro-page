@@ -1,22 +1,8 @@
----
-interface Props { showContact: boolean }
-const { showContact } = Astro.props;
----
-
 <section id="top" class="ocean" aria-labelledby="hero-title" data-scene="static">
   <div class="ocean-stage">
     <div class="ocean-fallback" aria-hidden="true"></div>
     <div class="ocean-canvas" aria-hidden="true"></div>
     <div class="ocean-shade" aria-hidden="true"></div>
-    <header class="site-header wrap">
-      <a class="wordmark" href="#top" aria-label="Arete Club — Back to top">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a>
-      <nav aria-label="Main navigation">
-        <a href="#about">About</a>
-        <a href="#research">Research</a>
-        <a href="#projects">Projects</a>
-        {showContact && <a href="#contact">Contact</a>}
-      </nav>
-    </header>
 
     <div class="scene-copy hero-copy" data-copy="hero">
       <div class="wrap">
