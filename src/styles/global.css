@@ -11,12 +11,15 @@
   --body-copy: #cfd9de;
   --rule: #1b3547;
   --gutter: clamp(24px, 4.8vw, 80px);
+  --header-h: 91px;
   font-family: 'Helvetica Neue', Arial, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   font-synthesis: none;
   color: var(--off-white);
   background: var(--bg);
 }
 * { box-sizing: border-box; }
+/* Anchors and keyboard focus land below the fixed header (SPEC N04). */
+html { scroll-padding-top: var(--header-h); }
 body { margin: 0; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; text-underline-offset: 5px; }
 a:hover { text-decoration: underline; }
@@ -25,6 +28,8 @@ p, h1, h2, h3 { margin: 0; }
 p { line-height: 1.8; word-break: keep-all; overflow-wrap: break-word; }
 ::selection { color: var(--bg); background: var(--cyan); }
 .wrap { width: calc(100% - var(--gutter) * 2); max-width: 1440px; margin-inline: auto; }
+/* Both languages ship in the HTML; the page language shows one (SPEC K07). */
+:root:not([lang='ko']) [data-lang='ko'], :root[lang='ko'] [data-lang='en'] { display: none; }
 .skip-link { position: fixed; top: 12px; left: 16px; z-index: 40; background: var(--off-white); color: var(--bg); padding: 12px 18px; transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
 .grain {
@@ -37,11 +42,35 @@ body:has(.ocean:is([data-phase='descent'], [data-phase='abyss'])) .grain { opaci
 /* Ocean sequence — static layout (no JS, reduced motion, WebGL fallback):
    the three scenes stack as panels from bright surface to the abyss. */
 .ocean { position: relative; --stage-ink: var(--bg); }
-.ocean-stage { position: relative; color: var(--stage-ink); background: var(--cyan); }
+/* Room for the fixed header keeps the static panels where they were (SPEC N03). */
+.ocean-stage { position: relative; padding-top: var(--header-h); color: var(--stage-ink); background: var(--cyan); }
 .ocean-fallback, .ocean-canvas, .ocean-shade, .scroll-cue { display: none; }
-.site-header { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding-block: 30px; border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+/* Fixed header (SPEC N01–N04). Default, also without JS: translucent navy bar, light ink. */
+.site-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 20; color: var(--off-white);
+  background-color: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  transition: color .3s, background-color .3s;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header { background-color: color-mix(in srgb, var(--bg) 94%, transparent); }
+}
+/* Over the ocean scene the header stays clear (no blur over the 3D canvas): navy ink on the
+   bright surface, light ink on the underwater top shade. */
+.js .site-header:not([data-state='solid']) { color: var(--bg); background-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.js .site-header[data-state='scene'] { color: var(--off-white); }
+.site-header-inner { display: flex; align-items: center; justify-content: space-between; height: var(--header-h); border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
 .wordmark { font-size: 27px; font-weight: 500; letter-spacing: -.06em; line-height: 1.1; white-space: nowrap; }
-nav { display: flex; gap: 35px; font-size: 13px; }
+.header-end { display: flex; align-items: center; gap: 35px; font-size: 13px; }
+nav { display: flex; gap: 35px; }
+/* Language toggle (SPEC K01–K03, K07–K09). The current language is underlined, not dimmed,
+   so both keep the header's contrast in every state. */
+.lang-toggle { display: flex; align-items: center; gap: .35em; }
+/* Switching needs JavaScript (K07); without it the page is English only. */
+html:not(.js) .lang-toggle { display: none; }
+.lang-toggle button { min-height: 24px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-underline-offset: 5px; }
+.lang-toggle [aria-pressed='true'] { text-decoration: underline; }
+.lang-toggle button:focus-visible { outline: 2px solid currentColor; outline-offset: 7px; border-radius: 1px; }
 .scene-copy { position: relative; z-index: 2; display: flex; text-align: left; }
 .hero-copy { min-height: 86svh; padding-block: 14svh 18svh; color: var(--bg); background: linear-gradient(to bottom, var(--cyan) 0%, var(--cyan) 50%, var(--sky-horizon) 100%); }
 .statement { min-height: 64svh; align-items: center; color: var(--off-white); }
@@ -137,7 +166,7 @@ h2 { font-size: clamp(40px, 5.4vw, 80px); font-weight: 400; line-height: 1.08; l
 .footer-top .wordmark { font-size: 40px; }
 .footer-top p { font-size: clamp(19px, 2.1vw, 30px); line-height: 1.45; font-weight: 400; letter-spacing: -.025em; }
 .footer-bottom { margin-top: 80px; display: flex; align-items: center; justify-content: space-between; gap: 24px; color: var(--muted); font-size: 13px; }
-.back-top span { margin-left: 8px; font-size: 16px; }
+.back-top-arrow { margin-left: 8px; font-size: 16px; }
 .official-links { display: flex; gap: 24px; font-size: 13px; }
 
 @media (max-width: 900px) {
@@ -148,9 +177,11 @@ h2 { font-size: clamp(40px, 5.4vw, 80px); font-weight: 400; line-height: 1.08; l
   .project-card { padding-block: 32px; }
 }
 @media (max-width: 600px) {
-  .site-header { padding-block: 23px; }
-  .wordmark { font-size: 22px; }
-  nav { gap: 18px; font-size: 11px; }
+  :root { --header-h: 72px; }
+  /* Room for the language toggle on one line down to 360px (SPEC K02). */
+  .wordmark { font-size: 17px; }
+  .header-end, nav { gap: 8px; }
+  .header-end { font-size: 11px; }
   .js .ocean:not([data-scene='fallback']) .hero-copy { padding-top: 112px; }
   .scene-eyebrow { margin-bottom: 20px; font-size: 13px; }
   .hero-title, .statement-lead { font-size: clamp(40px, 12vw, 64px); line-height: 1.05; }
