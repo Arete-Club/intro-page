@@ -1,42 +1,38 @@
----
-interface Props { showContact: boolean }
-const { showContact } = Astro.props;
----
-
 <section id="top" class="ocean" aria-labelledby="hero-title" data-scene="static">
   <div class="ocean-stage">
     <div class="ocean-fallback" aria-hidden="true"></div>
     <div class="ocean-canvas" aria-hidden="true"></div>
     <div class="ocean-shade" aria-hidden="true"></div>
-    <header class="site-header wrap">
-      <a class="wordmark" href="#top" aria-label="Arete Club — Back to top">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a>
-      <nav aria-label="Main navigation">
-        <a href="#about">About</a>
-        <a href="#research">Research</a>
-        <a href="#projects">Projects</a>
-        {showContact && <a href="#contact">Contact</a>}
-      </nav>
-    </header>
 
     <div class="scene-copy hero-copy" data-copy="hero">
       <div class="wrap">
         <p class="scene-eyebrow" lang="en">Independent AI Research &amp; Development</p>
         <h1 id="hero-title" class="hero-title" lang="en">Beyond the Surface.</h1>
-        <p class="story-description hero-sub"><span>AI grows through new discoveries and inventions.</span> <span>We begin with the technology around us.</span></p>
+        <!-- Each line ships in both languages; <html lang> shows one (SPEC K07). -->
+        <p class="story-description hero-sub">
+          <span data-lang="en">AI grows through new discoveries and inventions.</span> <span data-lang="en">We begin with the technology around us.</span>
+          <span data-lang="ko" lang="ko">AI는 새로운 발견과 발명으로 자라납니다.</span> <span data-lang="ko" lang="ko">우리는 우리 곁의 기술에서 시작합니다.</span>
+        </p>
       </div>
     </div>
     <div class="scene-copy statement descent-copy" data-copy="descent">
       <div class="wrap">
         <p class="statement-lead" lang="en">Beneath the Familiar.</p>
-        <p class="story-description statement-sub"><span>Beneath familiar tools lie layers of ideas and systems.</span> <span>We look deeper to understand the AI we already know.</span></p>
+        <p class="story-description statement-sub">
+          <span data-lang="en">Beneath familiar tools lie layers of ideas and systems.</span> <span data-lang="en">We look deeper to understand the AI we already know.</span>
+          <span data-lang="ko" lang="ko">익숙한 도구 아래에는 여러 층의 아이디어와 시스템이 있습니다.</span> <span data-lang="ko" lang="ko">우리는 이미 아는 AI를 더 깊이 이해하려 합니다.</span>
+        </p>
       </div>
     </div>
     <div class="scene-copy statement abyss-copy" data-copy="abyss">
       <div class="wrap">
         <p class="statement-lead" lang="en">Beyond the Known.</p>
-        <p class="story-description statement-sub"><span>What lies beyond what we know?</span> <span>We explore what has yet to be discovered or created.</span></p>
+        <p class="story-description statement-sub">
+          <span data-lang="en">What lies beyond what we know?</span> <span data-lang="en">We explore what has yet to be discovered or created.</span>
+          <span data-lang="ko" lang="ko">우리가 아는 것 너머에는 무엇이 있을까요?</span> <span data-lang="ko" lang="ko">아직 발견되지도, 만들어지지도 않은 것을 탐구합니다.</span>
+        </p>
       </div>
     </div>
-    <div class="scroll-cue" data-copy="cue" aria-hidden="true"><span>Scroll to explore</span><span class="scroll-line"></span></div>
+    <div class="scroll-cue" data-copy="cue" aria-hidden="true"><span data-lang="en">Scroll to explore</span><span data-lang="ko" lang="ko">스크롤해서 살펴보기</span><span class="scroll-line"></span></div>
   </div>
 </section>

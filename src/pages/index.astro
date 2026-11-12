@@ -7,6 +7,8 @@ import { channels, projects, research, verifiedLink } from '../data/content';
 const github = verifiedLink(channels.github);
 const description = 'An independent AI research and development community exploring unknown possibilities and building practical, verifiable AI systems.';
 const title = 'Arete Club — Independent AI Research & Development';
+// Korean copy in this page and in content.ts is a draft for review (SPEC K10).
+const titleKo = 'Arete Club — 독립 AI 연구·개발';
 ---
 
 <!doctype html>
@@ -20,61 +22,87 @@ const title = 'Arete Club — Independent AI Research & Development';
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="Arete Club" />
     <meta property="og:type" content="website" />
-    <title>{title}</title>
+    <title data-title-ko={titleKo}>{title}</title>
     <!-- Choose the scroll layout before first paint so anchors do not shift. -->
     <script is:inline>document.documentElement.classList.add('js');</script>
   </head>
   <body>
-    <a class="skip-link" href="#about">Skip to content</a>
+    <a class="skip-link" href="#about"><span data-lang="en">Skip to content</span><span data-lang="ko" lang="ko">본문으로 건너뛰기</span></a>
+    <!-- Fixed to the viewport (SPEC N01); its look follows what is under it. -->
+    <header class="site-header">
+      <div class="site-header-inner wrap">
+        <a class="wordmark" href="#top" aria-label="Arete Club — Back to top" data-label-ko="Arete Club — 맨 위로">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a>
+        <div class="header-end">
+          <nav aria-label="Main navigation" data-label-ko="주 메뉴">
+            <a href="#about" lang="en">About</a>
+            <a href="#research" lang="en">Research</a>
+            <a href="#projects" lang="en">Projects</a>
+            {(github || channels.email) && <a href="#contact" lang="en">Contact</a>}
+          </nav>
+          <!-- Same-page language switch (SPEC K07–K09); hidden without JavaScript. -->
+          <div class="lang-toggle" role="group" aria-label="Language" data-label-ko="언어">
+            <button type="button" lang="en" aria-label="English" aria-pressed="true" data-switch="en">EN</button>
+            <span aria-hidden="true">/</span>
+            <button type="button" lang="en" aria-label="Korean" aria-pressed="false" data-switch="ko">KO</button>
+          </div>
+        </div>
+      </div>
+    </header>
     <main>
-      <OceanExperience showContact={Boolean(github || channels.email)} />
+      <OceanExperience />
 
       <div class="deep-content">
         <section id="about" class="section wrap about" aria-labelledby="about-title">
-          <div class="section-label">About</div>
+          <div class="section-label" lang="en">About</div>
           <div class="section-grid">
-            <div data-reveal><p class="small-label">Explore deeply. Build with care.</p><h2 id="about-title">A Pursuit of<br />Excellence.</h2></div>
+            <div data-reveal lang="en"><p class="small-label">Explore deeply. Build with care.</p><h2 id="about-title">A Pursuit of<br />Excellence.</h2></div>
             <div class="about-copy" data-reveal="detail">
-              <p>Arete takes its name from the ancient Greek idea of excellence. We believe technology achieves excellence when it serves its purpose with clarity and care.</p>
-              <p>The ocean is close to us, yet much of its depth remains unknown. We approach AI with the same curiosity: understanding today's technology more deeply and exploring possibilities still beyond our reach.</p>
-              <div class="values"><span>Exploration</span><span>Excellence</span><span>Engineering</span></div>
+              <div data-lang="en">
+                <p>Arete takes its name from the ancient Greek idea of excellence. We believe technology achieves excellence when it serves its purpose with clarity and care.</p>
+                <p>The ocean is close to us, yet much of its depth remains unknown. We approach AI with the same curiosity: understanding today's technology more deeply and exploring possibilities still beyond our reach.</p>
+              </div>
+              <div data-lang="ko" lang="ko">
+                <p>Arete라는 이름은 탁월함을 뜻하는 고대 그리스어에서 왔습니다. 우리는 기술이 본래의 목적을 명확하고 충실하게 수행할 때 탁월해진다고 믿습니다.</p>
+                <p>바다는 우리 가까이에 있지만, 그 깊은 곳은 아직 대부분 알려지지 않았습니다. 우리는 같은 호기심으로 AI를 바라봅니다. 오늘의 기술을 더 깊이 이해하고, 아직 닿지 못한 가능성을 탐구합니다.</p>
+              </div>
+              <div class="values" lang="en"><span>Exploration</span><span>Excellence</span><span>Engineering</span></div>
             </div>
           </div>
         </section>
 
         <section id="research" class="section wrap research" aria-labelledby="research-title">
-          <div class="section-label">Research</div>
-          <div class="research-heading section-grid"><h2 id="research-title" data-reveal>What We Explore.</h2><p data-reveal="detail">We explore how to make intelligent systems more reliable, efficient, and aligned with human intent.</p></div>
-          <p class="small-label research-caption">Our research interests</p>
+          <div class="section-label" lang="en">Research</div>
+          <div class="research-heading section-grid"><h2 id="research-title" data-reveal lang="en">What We Explore.</h2><p data-reveal="detail"><span data-lang="en">We explore how to make intelligent systems more reliable, efficient, and aligned with human intent.</span><span data-lang="ko" lang="ko">지능형 시스템이 더 신뢰할 수 있고 효율적이며, 인간의 의도에 부합하도록 만드는 방법을 탐구합니다.</span></p></div>
+          <p class="small-label research-caption"><span data-lang="en">Our research interests</span><span data-lang="ko" lang="ko">연구 관심 분야</span></p>
           <div class="research-list">
             {research.map((area) => <article class="research-row section-grid">
-              <h3 data-reveal>{area.title}</h3><p data-reveal="detail">{area.description}</p>
+              <h3 data-reveal lang="en">{area.title}</h3><p data-reveal="detail"><span data-lang="en">{area.description}</span><span data-lang="ko" lang="ko">{area.descriptionKo}</span></p>
             </article>)}
           </div>
         </section>
 
         <section id="projects" class="section wrap projects" aria-labelledby="projects-title">
-          <div class="section-label">Projects</div>
-          <div class="projects-heading section-grid"><h2 id="projects-title" data-reveal>Ideas, into practice.</h2><p data-reveal="detail">Turning exploration into working projects.</p></div>
+          <div class="section-label" lang="en">Projects</div>
+          <div class="projects-heading section-grid"><h2 id="projects-title" data-reveal lang="en">Ideas, into practice.</h2><p data-reveal="detail"><span data-lang="en">Turning exploration into working projects.</span><span data-lang="ko" lang="ko">탐구를 실제로 작동하는 프로젝트로 만듭니다.</span></p></div>
           <div class="project-grid">{projects.map((project) => <ProjectCard project={project} />)}</div>
         </section>
 
         {github && <section id="exploration" class="section wrap exploration" aria-labelledby="exploration-title">
           <div class="section-label"></div>
           <div class="exploration-body section-grid">
-            <h2 id="exploration-title" data-reveal>Open Exploration.</h2>
+            <h2 id="exploration-title" data-reveal lang="en">Open Exploration.</h2>
             <div data-reveal="detail">
-              <p>Explore our public projects and research on GitHub.</p>
-              <a class="work-link action-link" href={github}>Arete Club on GitHub <span class="link-arrow" aria-hidden="true">↗</span></a>
+              <p><span data-lang="en">Explore our public projects and research on GitHub.</span><span data-lang="ko" lang="ko">공개 프로젝트와 연구를 GitHub에서 살펴보세요.</span></p>
+              <a class="work-link action-link" href={github}><span data-lang="en">Arete Club on GitHub</span><span data-lang="ko" lang="ko">GitHub에서 보기</span> <span class="link-arrow" aria-hidden="true">↗</span></a>
             </div>
           </div>
         </section>}
 
-        <footer id="contact" class="footer wrap" aria-label="Contact">
-          <div class="footer-top"><a href="#top" class="wordmark">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a><p>Curiosity drives exploration.<br />Evidence guides progress.</p></div>
-          <div class="footer-bottom"><span>© Arete Club</span>
-            {(github || channels.email) && <div class="official-links">{github && <a href={github}>GitHub ↗</a>}{channels.email && <a href={`mailto:${channels.email}`}>Contact ↗</a>}</div>}
-            <a class="back-top" href="#top">Back to surface <span aria-hidden="true">↑</span></a>
+        <footer id="contact" class="footer wrap" aria-label="Contact" data-label-ko="연락처">
+          <div class="footer-top"><a href="#top" class="wordmark">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a><p lang="en">Curiosity drives exploration.<br />Evidence guides progress.</p></div>
+          <div class="footer-bottom"><span lang="en">© Arete Club</span>
+            {(github || channels.email) && <div class="official-links">{github && <a href={github}>GitHub ↗</a>}{channels.email && <a href={`mailto:${channels.email}`}><span data-lang="en">Contact</span><span data-lang="ko" lang="ko">연락하기</span> ↗</a>}</div>}
+            <a class="back-top" href="#top"><span data-lang="en">Back to surface</span><span data-lang="ko" lang="ko">수면으로 돌아가기</span> <span class="back-top-arrow" aria-hidden="true">↑</span></a>
           </div>
         </footer>
       </div>
@@ -83,9 +111,15 @@ const title = 'Arete Club — Independent AI Research & Development';
     <script>
       import { mountOcean } from '../scripts/ocean/mount';
       import { mountEditorial } from '../scripts/editorial';
+      import { mountHeader } from '../scripts/header';
+      import { mountLanguage } from '../scripts/language';
       const content = document.querySelector<HTMLElement>('.deep-content');
       if (content) mountEditorial(content);
       const ocean = document.querySelector<HTMLElement>('.ocean');
+      const header = document.querySelector<HTMLElement>('.site-header');
+      if (header && ocean) mountHeader(header, ocean);
+      const toggle = document.querySelector<HTMLElement>('.lang-toggle');
+      if (toggle) mountLanguage(toggle);
       if (ocean) {
         // Decide the static layout before anchor placement when observation is unavailable.
         if (typeof IntersectionObserver === 'function') mountOcean(ocean);
