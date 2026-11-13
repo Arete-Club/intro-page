@@ -768,6 +768,25 @@ test('T16: the tab and home-screen icons are linked and served as PNGs at their 
   await expect(page.locator('head link[rel="icon"]')).toHaveAttribute('type', 'image/png');
 });
 
+test('T17: GitHub links open in a new tab and leave this page where it was', async ({ page, context }) => {
+  // Stand in for GitHub so the test does not depend on the network.
+  await context.route('https://github.com/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>GitHub stub</title>' }));
+  await page.goto('/');
+  const links = page.locator('a[href^="https://github.com/"]');
+  await expect(links).toHaveCount(4);
+  const home = page.url();
+  for (const link of await links.all()) {
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener');
+    const href = await link.getAttribute('href');
+    const [tab] = await Promise.all([context.waitForEvent('page'), link.click()]);
+    await tab.waitForLoadState();
+    expect(tab.url(), href!).toBe(href);
+    await tab.close();
+    expect(page.url(), href!).toBe(home);
+  }
+});
+
 test('V01: desktop/mobile captures and browser rendering profile', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   const profiles = [];

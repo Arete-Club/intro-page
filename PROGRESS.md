@@ -2,13 +2,21 @@
 
 ## 완료된 것
 
+### 2026-11-13 — GitHub 링크 새 탭 (G01–G03)
+
+- 사용자 요청: GitHub 링크가 지금 창에서 바로 넘어가니 새 창으로 열리게. 스펙은 `docs/SPEC.md` 상단 G01–G03.
+- 사용자 결정: 화면 낭독기용 "새 탭에서 열림" 안내 없이 ↗만 유지(추천안이던 접근성 이름 안내는 채택 안 함). `rel="noopener"`(추천안). `noreferrer`는 GitHub Traffic 유입 출처가 사라져서 채택 안 함. 파비콘을 `feat/favicon`에 먼저 커밋(926e3c7)하고 거기서 `feat/external-links` 분기.
+- 구현: GitHub 링크 4개(`ProjectCard.astro` 저장소 링크 2개, `index.astro` Open Exploration·푸터)에 `target="_blank" rel="noopener"`. 글자·↗·접근성 이름·한국어 문구는 그대로. 메일 링크(현재 미노출)는 범위 밖.
+- 검증(Node 22.23.4): check 0/0/0, lint, 단위 36개, build, e2e 55개(T17 1개 추가), 시각 1개 통과. T17은 GitHub 응답을 가짜로 대신해 외부 네트워크 없이 실행. 빌드 결과에서 target을 빼면 T17이 실패하는 것 확인 후 복구.
+- 2026-11-13 사용자 요청으로 커밋하고 `origin/feat/external-links`에 push(파비콘 커밋 926e3c7 포함). 커밋 직전 사용자가 `index.astro` Research 섹션 앞 빈 줄 하나를 지운 것도 함께 커밋함(화면 영향 없음, 전체 검증 재실행 통과). 로컬 `feat/favicon`은 따로 push하지 않음(같은 커밋이 포함됨). PR·병합은 안 함.
+
 ### 2026-11-13 — 파비콘 (F01–F04)
 
 - 사용자 요청: 로고를 파비콘으로. 사용자가 PDF를 `pdftocairo`로 SVG로 바꿔 `public/favicon.svg`·`public/logo.png`(141×141)를 넣음. 확인해 보니 PDF 안 로고가 283×283 PNG라 SVG는 비트맵을 감싸기만 함(93KB). 스펙은 `docs/SPEC.md` 상단 F01–F04.
 - 사용자 결정: PNG로 교체(추천안). favicon.svg 그대로 쓰는 안과 원본 벡터를 구해 다시 만드는 안은 채택 안 함. logo.png는 파비콘용이었으므로 삭제. 브랜치는 `feat/lang-toggle`에서 분기한 `feat/favicon`(main 분기안은 `<head>` 충돌 우려로 채택 안 함).
 - 구현: SVG 안 283px PNG를 꺼내 `sips`로 `public/favicon.png`(64×64)·`public/apple-touch-icon.png`(180×180) 생성. `index.astro` `<head>`에 `link rel=icon`(type png, sizes 64x64)·`rel=apple-touch-icon` 추가. 로고 그림 자체(남색 바탕·밝은 테두리)는 손대지 않음.
 - 검증(Node 22.23.4): check 0/0/0, lint, 단위 36개, build, e2e 54개(T16 1개 추가), 시각 1개 통과. 빌드 결과의 favicon.png를 180px 파일로 바꾸면 T16이 크기 불일치로 실패하는 것 확인 후 복구.
-- 남은 것: ① 실제 브라우저 탭(16px)에서 로고 가장자리의 밝은 테두리가 회색 테두리처럼 보이는지는 사용자 확인 필요. 헤드리스 브라우저에서는 탭이 보이지 않아 확인 못 함. ② 원본 벡터를 구하면 SVG 파비콘으로 바꿀 수 있음. ③ 커밋·push 안 함.
+- 남은 것: ① 실제 브라우저 탭(16px)에서 로고 가장자리의 밝은 테두리가 회색 테두리처럼 보이는지는 사용자 확인 필요. 헤드리스 브라우저에서는 탭이 보이지 않아 확인 못 함. ② 원본 벡터를 구하면 SVG 파비콘으로 바꿀 수 있음. ③ 926e3c7로 커밋, push 안 함.
 
 ### 2026-11-12 — 한국어 전환 로직 (K06–K12)
 
@@ -241,7 +249,8 @@
 - 빌드 제한: Three.js 장면 지연 로딩 청크 537,613 bytes / 로컬 gzip 133,347 bytes. 500KB 청크 경고는 남아 있음. 초기 HTML·본문은 이 청크 로딩과 독립적임.
 - 2026-11-12 작업 동결(freeze): `feat/lang-toggle`에 Astro 업데이트(f244966)·고정 헤더(d80ee4f)·한/영 토글과 한국어 전환(K01–K12)을 커밋하고 origin에 push. 로컬 `feat/fixed-header` 브랜치는 따로 push하지 않음(같은 커밋이 `feat/lang-toggle`에 포함). PR·병합은 안 함.
 - 사용자 대기: 고정 헤더 실제 스크롤 검토, 한국어 문구 직접 수정(HTML·content.ts). 문구 확정 전 공개 배포 보류.
-- 2026-11-13 파비콘(F01–F04) 구현·검증 완료. `feat/favicon` 로컬 미커밋. 사용자의 실제 탭 확인 대기.
+- 2026-11-13 파비콘(F01–F04) 구현·검증 완료. `feat/favicon`에 커밋(926e3c7), push 안 함. 사용자의 실제 탭 확인 대기.
+- 2026-11-13 GitHub 링크 새 탭(G01–G03) 구현·검증 완료. `feat/external-links`(feat/favicon에서 분기)에 커밋하고 origin에 push. 파비콘 커밋도 이 브랜치로 push됨. PR·병합은 안 함.
 - 개발 도구 제한: 2026-11-11부터 Astro 7.4.10 때문에 Node 22.23.4 이상 필요(시스템 `/usr/local/bin/node`는 22.21.0이라 그대로 쓰면 실패). ESLint 9.39.5 + eslint-plugin-astro 1.3.1은 Node 22.21.0 기준으로 고른 버전. 최신 플러그인은 Node 22.22.3 이상을 요구함. 온라인 npm audit는 braces → micromatch → fast-glob → astro-eslint-parser 체인 high 4건을 보고했고 `npm audit fix`는 해소하지 못함. 오프라인 lockfile 갱신 때 표시된 0건은 온라인 재검증 근거로 사용하지 않음.
 
 ## 다음 단계

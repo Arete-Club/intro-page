@@ -15,7 +15,7 @@ const repository = href ? new URL(href).pathname.replace(/^\/|\/$/g, '') : null;
     <p><span data-lang="en">{project.summary}</span><span data-lang="ko" lang="ko">{project.summaryKo}</span></p>
     {(project.status || href) && <div class="project-links">
       {project.status && <span class="project-status">{project.status}</span>}
-      {href && <a class="action-link" href={href} aria-label={`GitHub repository ${repository}`} data-label-ko={`GitHub 저장소 ${repository}`}><span class="record">{repository}</span> <span class="link-arrow" aria-hidden="true">↗</span></a>}
+      {href && <a class="action-link" href={href} target="_blank" rel="noopener" aria-label={`GitHub repository ${repository}`} data-label-ko={`GitHub 저장소 ${repository}`}><span class="record">{repository}</span> <span class="link-arrow" aria-hidden="true">↗</span></a>}
     </div>}
   </div>
 </article>
