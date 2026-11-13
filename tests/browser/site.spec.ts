@@ -751,6 +751,42 @@ for (const [width, height] of [[375, 667], [390, 844], [1440, 900]]) {
   });
 }
 
+test('T16: the tab and home-screen icons are linked and served as PNGs at their sizes', async ({ page, request }) => {
+  await page.goto('/');
+  for (const [selector, href, size] of [
+    ['head link[rel="icon"]', '/favicon.png', 64],
+    ['head link[rel="apple-touch-icon"]', '/apple-touch-icon.png', 180],
+  ] as const) {
+    await expect(page.locator(selector)).toHaveAttribute('href', href);
+    const response = await request.get(href);
+    expect(response.status(), href).toBe(200);
+    const bytes = await response.body();
+    // PNG signature, then the IHDR width and height (big-endian) at bytes 16–23.
+    expect(bytes.subarray(0, 8).toString('hex'), href).toBe('89504e470d0a1a0a');
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)], href).toEqual([size, size]);
+  }
+  await expect(page.locator('head link[rel="icon"]')).toHaveAttribute('type', 'image/png');
+});
+
+test('T17: GitHub links open in a new tab and leave this page where it was', async ({ page, context }) => {
+  // Stand in for GitHub so the test does not depend on the network.
+  await context.route('https://github.com/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>GitHub stub</title>' }));
+  await page.goto('/');
+  const links = page.locator('a[href^="https://github.com/"]');
+  await expect(links).toHaveCount(4);
+  const home = page.url();
+  for (const link of await links.all()) {
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener');
+    const href = await link.getAttribute('href');
+    const [tab] = await Promise.all([context.waitForEvent('page'), link.click()]);
+    await tab.waitForLoadState();
+    expect(tab.url(), href!).toBe(href);
+    await tab.close();
+    expect(page.url(), href!).toBe(home);
+  }
+});
+
 test('V01: desktop/mobile captures and browser rendering profile', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   const profiles = [];

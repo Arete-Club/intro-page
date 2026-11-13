@@ -18,6 +18,8 @@ const titleKo = 'Arete Club — 독립 AI 연구·개발';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#061521" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="Arete Club" />
@@ -69,7 +71,6 @@ const titleKo = 'Arete Club — 독립 AI 연구·개발';
             </div>
           </div>
         </section>
-
         <section id="research" class="section wrap research" aria-labelledby="research-title">
           <div class="section-label" lang="en">Research</div>
           <div class="research-heading section-grid"><h2 id="research-title" data-reveal lang="en">What We Explore.</h2><p data-reveal="detail"><span data-lang="en">We explore how to make intelligent systems more reliable, efficient, and aligned with human intent.</span><span data-lang="ko" lang="ko">지능형 시스템이 더 신뢰할 수 있고 효율적이며, 인간의 의도에 부합하도록 만드는 방법을 탐구합니다.</span></p></div>
@@ -93,7 +94,7 @@ const titleKo = 'Arete Club — 독립 AI 연구·개발';
             <h2 id="exploration-title" data-reveal lang="en">Open Exploration.</h2>
             <div data-reveal="detail">
               <p><span data-lang="en">Explore our public projects and research on GitHub.</span><span data-lang="ko" lang="ko">공개 프로젝트와 연구를 GitHub에서 살펴보세요.</span></p>
-              <a class="work-link action-link" href={github}><span data-lang="en">Arete Club on GitHub</span><span data-lang="ko" lang="ko">GitHub에서 보기</span> <span class="link-arrow" aria-hidden="true">↗</span></a>
+              <a class="work-link action-link" href={github} target="_blank" rel="noopener"><span data-lang="en">Arete Club on GitHub</span><span data-lang="ko" lang="ko">GitHub에서 보기</span> <span class="link-arrow" aria-hidden="true">↗</span></a>
             </div>
           </div>
         </section>}
@@ -101,7 +102,7 @@ const titleKo = 'Arete Club — 독립 AI 연구·개발';
         <footer id="contact" class="footer wrap" aria-label="Contact" data-label-ko="연락처">
           <div class="footer-top"><a href="#top" class="wordmark">Arete Club<span class="wordmark-dot" aria-hidden="true">.</span></a><p lang="en">Curiosity drives exploration.<br />Evidence guides progress.</p></div>
           <div class="footer-bottom"><span lang="en">© Arete Club</span>
-            {(github || channels.email) && <div class="official-links">{github && <a href={github}>GitHub ↗</a>}{channels.email && <a href={`mailto:${channels.email}`}><span data-lang="en">Contact</span><span data-lang="ko" lang="ko">연락하기</span> ↗</a>}</div>}
+            {(github || channels.email) && <div class="official-links">{github && <a href={github} target="_blank" rel="noopener">GitHub ↗</a>}{channels.email && <a href={`mailto:${channels.email}`}><span data-lang="en">Contact</span><span data-lang="ko" lang="ko">연락하기</span> ↗</a>}</div>}
             <a class="back-top" href="#top"><span data-lang="en">Back to surface</span><span data-lang="ko" lang="ko">수면으로 돌아가기</span> <span class="back-top-arrow" aria-hidden="true">↑</span></a>
           </div>
         </footer>

@@ -1,5 +1,22 @@
 # Arete Club 소개 웹 — SPEC v1
 
+> **2026-11-13 승인 개정 — GitHub 링크 새 탭:** 사용자 요청: GitHub 링크를 누르면 지금 창에서 바로 GitHub로 넘어가니, 새 창으로 열리게 해 달라. 사용자 결정: ① 화면 낭독기용 "새 탭에서 열림" 안내는 넣지 않고 기존 ↗만 둔다(추천안이던 접근성 이름 안내는 채택 안 함). ② `rel="noopener"`(추천안). `noreferrer`는 GitHub Traffic에서 유입 출처가 보이지 않게 돼서 채택 안 함.
+
+### GitHub 링크 기준 (G01–G03)
+
+- G01 범위: 페이지의 GitHub 링크 4개다. 프로젝트 카드 저장소 링크 2개(SkillFetch, Handoff), Open Exploration의 "Arete Club on GitHub", 푸터 "GitHub ↗". 내부 앵커와 메일 링크(현재 미노출)는 그대로다.
+- G02 동작: 네 링크에 `target="_blank" rel="noopener"`를 붙인다. 새 탭으로 열지 새 창으로 열지는 브라우저 설정을 따른다. 원래 페이지는 주소·스크롤 위치·3D 장면이 그대로 남는다. 보이는 글자, ↗, 접근성 이름, 한국어 문구는 바꾸지 않는다.
+- G03 검증: T17을 추가한다. github.com으로 가는 링크가 모두 `target="_blank"`와 `rel="noopener"`를 가졌고 개수가 4개인지 확인한다. 링크를 누르면 새 페이지가 열리고 원래 페이지 주소가 바뀌지 않는지도 확인한다(GitHub 응답은 테스트에서 가짜로 대신해 외부 네트워크에 의존하지 않음). 기존 check·lint·unit·e2e·visual·build를 통과해야 한다.
+
+> **2026-11-13 승인 개정 — 파비콘:** 사용자 요청: 로고를 파비콘으로 넣어 달라. 사용자가 PDF 로고를 SVG로 변환해 `public/favicon.svg`와 `public/logo.png`(141×141)를 넣었다. 확인해 보니 PDF 안의 로고가 283×283 PNG여서 SVG는 비트맵을 감싸기만 했다(93KB, 벡터 장점 없음). 사용자 결정: PNG로 교체(추천안). `favicon.svg`를 그대로 쓰는 안과 원본 벡터를 구해 다시 만드는 안은 채택하지 않았다. `logo.png`는 파비콘용이었으므로 지운다.
+
+### 파비콘 기준 (F01–F04)
+
+- F01 원본: `favicon.svg`에 들어 있던 283×283 PNG를 원본으로 쓴다. 더 작은 `logo.png`(141px)는 쓰지 않는다. 로고 그림(남색 바탕·테두리 포함)은 고치지 않는다.
+- F02 파일: `public/favicon.png`(64×64, 브라우저 탭)와 `public/apple-touch-icon.png`(180×180, iOS 홈 화면)를 둔다. `public/favicon.svg`·`public/logo.png`는 지운다.
+- F03 연결: `index.astro` `<head>`에 `<link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">`와 `<link rel="apple-touch-icon" href="/apple-touch-icon.png">`를 둔다. JS 여부와 언어 상태와 상관없이 같다.
+- F04 검증: T16을 추가한다. 두 링크가 `<head>`에 있고, 링크한 파일이 빌드 결과에서 200으로 응답하며, 형식이 PNG이고 크기가 64×64·180×180인지 확인한다. 기존 check·lint·unit·e2e·visual·build를 통과해야 한다.
+
 > **2026-11-12 승인 개정 — 한국어 전환 로직:** 사용자 결정 네 가지. ① 번역 범위: 큰 제목·인덱스는 영어, 세부 콘텐츠는 한국어(Claude 분류안 그대로 승인). ② 방식: 같은 페이지에서 글자 교체(B). 추천안이던 `/ko/` 별도 페이지(A)는 전환할 때 3D 장면과 보던 위치를 잃어서, UI/UX를 우선해 채택하지 않았다. ③ 선택한 언어는 저장하지 않고 항상 영어로 시작한다(기억하기 안은 채택 안 함). ④ 처음 방문할 때도 영어다(브라우저 언어 따르기 안은 채택 안 함). 한국어 문구는 Claude 초안이고, 사용자가 이후 HTML·`content.ts`에서 직접 다듬는다. K04(동작 없음)는 아래 K07–K08로 대체한다. E02(접근성·설명 영어)·E03(언어 선택기 없음)은 한국어 상태에 한해 대체한다.
 
 ### 한국어 전환 기준 (K06–K12)
